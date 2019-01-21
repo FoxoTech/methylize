@@ -1,3 +1,5 @@
+import statsmodels.api as sm
+
 def dmpFinder(methData,phenoData,phenoDataType,qCutoff=1,shrinkVar=False):
     """
     This function searches for individual differentially methylated positions
@@ -49,7 +51,7 @@ def dmpFinder(methData,phenoData,phenoDataType,qCutoff=1,shrinkVar=False):
 
     ##Fit model for categorical phenotype data
     if phenoDataType == "categorical":
-        
+        sm.OLS()
     
 
 
