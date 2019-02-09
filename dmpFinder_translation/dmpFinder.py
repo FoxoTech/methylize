@@ -1,7 +1,7 @@
 import statsmodels.api as sm
 import numpy as np
 
-def detect_DMPs(meth_data,pheno_data,pheno_data_type,q_cutoff=1,shrink_var=False):
+def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrink_var=False):
     """
     This function searches for individual differentially methylated positions/probes
     (DMPs) by regressing the methylation M-value for each sample at a given
@@ -12,25 +12,29 @@ def detect_DMPs(meth_data,pheno_data,pheno_data_type,q_cutoff=1,shrink_var=False
 
     Inputs and Parameters
     ---------------------------------------------------------------------------
-        methData: (CURRENTLY) A numpy array of methylation M-values for
+        meth_data: (CURRENTLY) A numpy array of methylation M-values for
                   where each column corresponds to a CpG site probe and each
                   row corresponds to a sample.
-        phenoData: A list or one dimensional numpy array of phenotypes
+        pheno_data: A list or one dimensional numpy array of phenotypes
                    for each sample column of meth_data.
                    - Binary phenotypes can be presented as a list/array
                      of zeroes and ones or as a list/array of strings made up
                      of two unique words (i.e. "control" and "cancer"). The first
                      string in phenoData will be converted to zeroes, and the
-                     second string encountered will be convered to ones.
-        phenoDataType: Either the string "categorical" if the phenotypes are
-                       qualitative in nature, or the string "continuous" if the
-                       phenotypes are numeric measurements.
-        qCutoff: Select a cutoff value to return only those DMPs that meet a
+                     second string encountered will be convered to ones for the
+                     logistic regression analysis.
+        regression_method: Either the string "logistic" or the string "linear"
+                           depending on the phenotype data available. (Default:
+                           "linear") Phenotypes with only two options
+                           (e.g. "control" and "cancer") should be analyzed
+                           with a logistic regression, whereas continuous numeric
+                           phenotypes are required to run the linear regression analysis.
+        q_cutoff: Select a cutoff value to return only those DMPs that meet a
                  particular significance threshold. Reported q-values are
                  p-values corrected according to the model's false discovery
                  rate (FDR). Default = 1 to return all DMPs regardless of
                  significance.
-        shrinkVar: If True, variance shrinkage will be employed and squeeze
+        shrink_var: If True, variance shrinkage will be employed and squeeze
                    variance using Bayes posterior means. Variance shrinkage
                    is recommended when analyzing small datasets (n < 10).
                    (NOT IMPLEMENTED YET)
@@ -39,10 +43,10 @@ def detect_DMPs(meth_data,pheno_data,pheno_data_type,q_cutoff=1,shrink_var=False
         
     """
 
-    ##Check that phenotype data has been specified as either binary or continuous
-    data_types = ["binary","continuous"]
-    if pheno_data_type not in data_types:
-        raise ValueError("Phenotype data must be described as either 'binary' or 'continuous'")
+    ##Check that an available regression method has been selected
+    regression_options = ["logistic","linear"]
+    if regression_method not in regression_options:
+        raise ValueError("Either a 'linear' or 'logistic' regression must be specified for this analysis.")
 
     ##Check that meth_data is a numpy array with float type data
     if type(meth_data) is np.ndarray:
@@ -56,9 +60,9 @@ def detect_DMPs(meth_data,pheno_data,pheno_data_type,q_cutoff=1,shrink_var=False
         raise ValueError("Methylation data and phenotypes must have the same number of samples")
 
     ##Run logistic regression for binary phenotype data
-    if pheno_data_type == "binary":
+    if regression_method == "logistic":
         ##Check that binary phenotype data actually has 2 distinct categories
-        pheno_options = set(pheno_data_type)
+        pheno_options = set(pheno_data)
         if len(pheno_options) < 2:
             raise ValueError("Binary phenotype analysis requires 2 different phenotypes, but only 1 is detected.")
         elif len(pheno_options) > 2:
@@ -103,7 +107,7 @@ def detect_DMPs(meth_data,pheno_data,pheno_data_type,q_cutoff=1,shrink_var=False
             results = logit.fit()
 
     ##Run OLS regression on continuous phenotype data
-    else:
+    elif regression_method == "linear":
         ##Check that phenotype data can be converted to a numeric array
         try:
             pheno_data_array = np.array(pheno_data,dtype="float_")
