@@ -13,8 +13,8 @@ def detect_DMPs(meth_data,pheno_data,pheno_data_type,q_cutoff=1,shrink_var=False
     Inputs and Parameters
     ---------------------------------------------------------------------------
         methData: (CURRENTLY) A numpy array of methylation M-values for
-                  where each row corresponds to a CpG site probe and each
-                  column corresponds to a sample.
+                  where each column corresponds to a CpG site probe and each
+                  row corresponds to a sample.
         phenoData: A list or one dimensional numpy array of phenotypes
                    for each sample column of meth_data.
                    - Binary phenotypes can be presented as a list/array
@@ -54,9 +54,6 @@ def detect_DMPs(meth_data,pheno_data,pheno_data_type,q_cutoff=1,shrink_var=False
     ##Check that the methylation and phenotype data correspond to the same number of samples
     if len(pheno_data) != meth_data.shape[1]:
         raise ValueError("Methylation data and phenotypes must have the same number of samples")
-
-    ##Format methylation data for regression
-    meth_data_T = np.transpose(meth_data)  ##transpose meth_data to make a row for each sample and column for each probe
 
     ##Run logistic regression for binary phenotype data
     if pheno_data_type == "binary":
@@ -100,10 +97,10 @@ def detect_DMPs(meth_data,pheno_data,pheno_data_type,q_cutoff=1,shrink_var=False
             ##Print a message to let the user know what values were converted to zeroes and ones
             print("WARNING: Because phenotypes were provided as values other than 0 and 1, the all samples with the phenotype %s were assigned a value of 0 and all samples with the phenotype %s were assigned a value of 1 for the regression analysis." % (list(pheno_options)[0],list(pheno_options)[1]))
         
-        ##Fit logistic regression to phenotype and M-value data
-        logit = sm.Logit(pheno_data_binary,meth_data_T)
-        ##Encountering PERFECT SEPARATION ERROR, need to reduce dimensionality
-        results = logit.fit()
+        ##Fit logistic regression for each probe of methylation data
+        for probe in range(meth_data.shape[1]):
+            logit = sm.Logit(pheno_data_binary,meth_data[:,probe])
+            results = logit.fit()
 
     ##Run OLS regression on continuous phenotype data
     else:
@@ -116,12 +113,13 @@ def detect_DMPs(meth_data,pheno_data,pheno_data_type,q_cutoff=1,shrink_var=False
         probe_pvals = []
         probe_coefs = []
         probe_SE = []
-        for probe in range(meth_data_T.shape[1]):
-            model = sm.OLS(meth_data_T[:,probe],pheno_data_array)
+        for probe in range(meth_data.shape[1]):
+            model = sm.OLS(meth_data[:,probe],pheno_data_array)
             results = model.fit()
             probe_coefs.append(results.params)
             probe_SE.append(results.bse)
             probe_pvals.append(results.pvalues)
+        probe_pvals_corrected = sm.multipletests(probe_pvals,alpha=0.05,method="fdr_bh")
         return probe_pvals,probe_coefs,probe_SE
 
 
