@@ -1,5 +1,6 @@
 import statsmodels.api as sm
 import numpy as np
+import pandas as pd
 
 def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrink_var=False):
     """
@@ -12,7 +13,7 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
 
     Inputs and Parameters
     ---------------------------------------------------------------------------
-        meth_data: (CURRENTLY) A numpy array of methylation M-values for
+        meth_data: (CURRENTLY) A pandas dataframe of methylation M-values for
                   where each column corresponds to a CpG site probe and each
                   row corresponds to a sample.
         pheno_data: A list or one dimensional numpy array of phenotypes
@@ -40,7 +41,18 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
                    (NOT IMPLEMENTED YET)
 
     Returns:
-        
+        A pandas dataframe of regression statistics with a row for each probe analyzed
+        and columns listing the individual probe's regression statistics of:
+            - regression coefficient
+            - lower limit of the coefficient's 95% confidence interval
+            - upper limit of the coefficient's 95% confidence interval
+            - standard error
+            - p-value
+            - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
+
+        The rows are sorted by q-value in ascending order to list the most significant
+        probes first. If q_cutoff is specified, only probes with significant q-values
+        less than the cutoff will be returned in the dataframe.
     """
 
     ##Check that an available regression method has been selected
@@ -59,6 +71,15 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
     if len(pheno_data) != meth_data.shape[1]:
         raise ValueError("Methylation data and phenotypes must have the same number of samples")
 
+    ##Extract column names corresponding to all probes to set row indices for results
+    all_probes = meth_data.columns.values.tolist()
+    ##List the statistical output to be produced for each probe's regression
+    stat_cols = ["Coefficient","95%CI_lower","95%CI_upper","StandardError","PValue","FDR_QValue"]
+    ##Create empty pandas dataframe with probe names as row index to hold stats for each probe
+    probe_stats = pd.DataFrame(index=all_probes,columns=stat_cols)
+    ##Fill with NAs
+    probe_stats = probe_stats.fillna()
+    
     ##Run logistic regression for binary phenotype data
     if regression_method == "logistic":
         ##Check that binary phenotype data actually has 2 distinct categories
@@ -105,6 +126,19 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
         for probe in range(meth_data.shape[1]):
             logit = sm.Logit(pheno_data_binary,meth_data[:,probe])
             results = logit.fit()
+            ##Extract desired statistical measures from logistic fit object
+            probe_coef = results.params
+            probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
+            probe_pval = results.pvalues
+            probe_SE = results.bse
+            ##Fill in the corresponding row of the results dataframe with these values
+            probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef,"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1],"StandardError":probe_SE,"PValue":probe_pval}
+        ##Correct all the p-values for multiple testing
+        probe_stats["FDR_QValue"] = sm.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")
+        ##Sort dataframe by q-values, ascending, to list most significant probes first
+        probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
+        ##Limit dataframe to probes with q-values less than the specified cutoff
+        probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] < q_cutoff]
 
     ##Run OLS regression on continuous phenotype data
     elif regression_method == "linear":
@@ -114,21 +148,24 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
         except:
             raise ValueError("Phenotype data cannot be converted to a continuous numeric data type.")
 
-        probe_pvals = []
-        probe_coefs = []
-        probe_SE = []
-        ##Create empty pandas dataframe with probe names as row index to hold stats for each probe
         ##Fit least squares regression to each probe of methylation data
         for probe in range(meth_data.shape[1]):
             model = sm.OLS(meth_data[:,probe],pheno_data_array)
             results = model.fit()
-            probe_coefs.append(results.params)
-            probe_SE.append(results.bse)
-            probe_pvals.append(results.pvalues)
-        probe_qvals = sm.multipletests(probe_pvals,alpha=0.05,method="fdr_bh")
+            probe_coef = results.param
+            probe_CI = results.conf_int(0.05)   ##returns the lower and upper bounds for the coefficient's 95% confidence interval
+            probe_SE = results.bse
+            probe_pvals = results.pvalues
+            ##Fill in the corresponding row of the results dataframe with these values
+            probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef,"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1],"StandardError":probe_SE,"PValue":probe_pval}
+        ##Correct all the p-values for multiple testing
+        probe_stats["FDR_QValue"] = sm.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")
         ##Sort dataframe by q-value, ascending, to list most significant probes first
-        ##Elimintate probes with q-values larger than the specified cutoff
-        return probe_stats
+        probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
+        ##Limit dataframe to probes with q-values less than the specified cutoff
+        probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] < q_cutoff]
+
+    return probe_stats
 
 
                          
