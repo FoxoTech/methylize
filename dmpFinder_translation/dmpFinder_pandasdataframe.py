@@ -61,14 +61,16 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
         raise ValueError("Either a 'linear' or 'logistic' regression must be specified for this analysis.")
 
     ##Check that meth_data is a numpy array with float type data
-    if type(meth_data) is np.ndarray:
-        if not np.issubdtype(meth_data.dtype, np.number):
-            raise ValueError("Methylation values must be numeric data")
+    if type(meth_data) is pd.DataFrame:
+        meth_dtypes = list(set(meth_data.dtypes))
+        for d in meth_dtypes:
+            if not np.issubdtype(d, np.number):
+                raise ValueError("Methylation values must be numeric data")
     else:
-        raise ValueError("Methylation values must be in numeric numpy array")
+        raise ValueError("Methylation values must be in a pandas DataFrame")
 
     ##Check that the methylation and phenotype data correspond to the same number of samples
-    if len(pheno_data) != meth_data.shape[1]:
+    if len(pheno_data) != meth_data.shape[0]:
         raise ValueError("Methylation data and phenotypes must have the same number of samples")
 
     ##Extract column names corresponding to all probes to set row indices for results
@@ -78,7 +80,7 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
     ##Create empty pandas dataframe with probe names as row index to hold stats for each probe
     probe_stats = pd.DataFrame(index=all_probes,columns=stat_cols)
     ##Fill with NAs
-    probe_stats = probe_stats.fillna()
+    probe_stats = probe_stats.fillna(np.nan)
     
     ##Run logistic regression for binary phenotype data
     if regression_method == "logistic":
@@ -120,11 +122,11 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
             ##Coerce array class to integers
             pheno_data_binary = np.array(pheno_data_binary,dtype=np.int)
             ##Print a message to let the user know what values were converted to zeroes and ones
-            print("WARNING: Because phenotypes were provided as values other than 0 and 1, the all samples with the phenotype %s were assigned a value of 0 and all samples with the phenotype %s were assigned a value of 1 for the regression analysis." % (list(pheno_options)[0],list(pheno_options)[1]))
+            print("Because phenotypes were provided as values other than 0 and 1, all samples with the phenotype %s were assigned a value of 0 and all samples with the phenotype %s were assigned a value of 1 for the logistic regression analysis." % (list(pheno_options)[0],list(pheno_options)[1]))
         
         ##Fit logistic regression for each probe of methylation data
         for probe in range(meth_data.shape[1]):
-            logit = sm.Logit(pheno_data_binary,meth_data[:,probe])
+            logit = sm.Logit(pheno_data_binary,meth_data[all_probes[probe]])
             results = logit.fit()
             ##Extract desired statistical measures from logistic fit object
             probe_coef = results.params
@@ -132,7 +134,8 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
             probe_pval = results.pvalues
             probe_SE = results.bse
             ##Fill in the corresponding row of the results dataframe with these values
-            probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef,"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1],"StandardError":probe_SE,"PValue":probe_pval}
+            probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef[0],"95%CI_lower":probe_CI[0],"95%CI_upper":probe_CI[1],"StandardError":probe_SE[0],"PValue":probe_pval[0]}
+            print(probe_stats.loc[all_probes[probe]])
         ##Correct all the p-values for multiple testing
         probe_stats["FDR_QValue"] = sm.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")
         ##Sort dataframe by q-values, ascending, to list most significant probes first
@@ -150,12 +153,12 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
 
         ##Fit least squares regression to each probe of methylation data
         for probe in range(meth_data.shape[1]):
-            model = sm.OLS(meth_data[:,probe],pheno_data_array)
+            model = sm.OLS(meth_data[all_probes[probe]],pheno_data_array)
             results = model.fit()
             probe_coef = results.param
             probe_CI = results.conf_int(0.05)   ##returns the lower and upper bounds for the coefficient's 95% confidence interval
             probe_SE = results.bse
-            probe_pvals = results.pvalues
+            probe_pval = results.pvalues
             ##Fill in the corresponding row of the results dataframe with these values
             probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef,"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1],"StandardError":probe_SE,"PValue":probe_pval}
         ##Correct all the p-values for multiple testing
@@ -170,5 +173,4 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
 
                          
                          
-    
     
