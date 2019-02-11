@@ -123,25 +123,46 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
             pheno_data_binary = np.array(pheno_data_binary,dtype=np.int)
             ##Print a message to let the user know what values were converted to zeroes and ones
             print("Because phenotypes were provided as values other than 0 and 1, all samples with the phenotype %s were assigned a value of 0 and all samples with the phenotype %s were assigned a value of 1 for the logistic regression analysis." % (list(pheno_options)[0],list(pheno_options)[1]))
-        
+
+        ##Create variables to track perfect separation errors and list
+            ##which probes were unable to be analyzed with logistic regression
+        perfect_sep = False
+        perfect_sep_probes = []
         ##Fit logistic regression for each probe of methylation data
         for probe in range(meth_data.shape[1]):
             logit = sm.Logit(pheno_data_binary,meth_data[all_probes[probe]])
-            results = logit.fit()
-            ##Extract desired statistical measures from logistic fit object
-            probe_coef = results.params
-            probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
-            probe_pval = results.pvalues
-            probe_SE = results.bse
-            ##Fill in the corresponding row of the results dataframe with these values
-            probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef[0],"95%CI_lower":probe_CI[0],"95%CI_upper":probe_CI[1],"StandardError":probe_SE[0],"PValue":probe_pval[0]}
-            print(probe_stats.loc[all_probes[probe]])
+            ##Try to extract the results of the logistic regression from the fit object
+            try:
+                results = logit.fit()
+            ##If the fit throws a perfect separation error, record which probe this is and move on
+            except Exception as ex:
+                if type(ex).__name__ == "PerfectSeparationError":
+                    perfect_sep = True
+                    perfect_sep_probes.append(all_probes[probe])
+                else:
+                    raise ex
+            if not perfect_sep:
+                ##Extract desired statistical measures from logistic fit object
+                probe_coef = results.params
+                probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
+                probe_CI = np.array(probe_CI)  ##conf_int returns a pandas dataframe, easier to work with array for extracting results though
+                probe_pval = results.pvalues
+                probe_SE = results.bse
+                ##Fill in the corresponding row of the results dataframe with these values
+                probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1],"StandardError":probe_SE[0],"PValue":probe_pval[0]}
         ##Correct all the p-values for multiple testing
         probe_stats["FDR_QValue"] = sm.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")
         ##Sort dataframe by q-values, ascending, to list most significant probes first
         probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
         ##Limit dataframe to probes with q-values less than the specified cutoff
         probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] < q_cutoff]
+        ##Print a message to let the user know how many and which probes failed
+            ##with perfect separation
+        if len(perfect_sep_probes) > 0:
+            print("%s probes failed the logistic regression analysis due to perfect separation and could not be included in the final results." % len(perfect_sep_probes))
+            print("Probes with perfect separation errors:")
+            for i in perfect_sep_probes:
+                print(i)
 
     ##Run OLS regression on continuous phenotype data
     elif regression_method == "linear":
