@@ -1,6 +1,7 @@
 import statsmodels.api as sm
 import numpy as np
 import pandas as pd
+import multiprocessing as mp
 
 def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrink_var=False):
     """
@@ -126,7 +127,6 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
 
         ##Create variables to track perfect separation errors and list
             ##which probes were unable to be analyzed with logistic regression
-        perfect_sep = False
         perfect_sep_probes = []
         ##Fit logistic regression for each probe of methylation data
         for probe in range(meth_data.shape[1]):
@@ -134,14 +134,6 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
             ##Try to extract the results of the logistic regression from the fit object
             try:
                 results = logit.fit()
-            ##If the fit throws a perfect separation error, record which probe this is and move on
-            except Exception as ex:
-                if type(ex).__name__ == "PerfectSeparationError":
-                    perfect_sep = True
-                    perfect_sep_probes.append(all_probes[probe])
-                else:
-                    raise ex
-            if not perfect_sep:
                 ##Extract desired statistical measures from logistic fit object
                 probe_coef = results.params
                 probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
@@ -150,8 +142,19 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
                 probe_SE = results.bse
                 ##Fill in the corresponding row of the results dataframe with these values
                 probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1],"StandardError":probe_SE[0],"PValue":probe_pval[0]}
+            ##If the fit throws a perfect separation error, record which probe this is and move on
+            except Exception as ex:
+                if type(ex).__name__ == "PerfectSeparationError":
+                    perfect_sep_probes.append(all_probes[probe])
+                elif type(ex).__name__ == "LinAlgError":
+                    print("Probe %s encountered a LinAlgError: Singular matrix." % all_probes[probe])
+                else:
+                    raise ex
+        print(probe_stats)
+        ##Remove any rows that still have NAs (probes that couldn't be analyzed due to perfect separation or LinAlgError)
+        probe_stats = probe_stats.dropna(axis=0,how="all")
         ##Correct all the p-values for multiple testing
-        probe_stats["FDR_QValue"] = sm.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")
+        probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")[1]
         ##Sort dataframe by q-values, ascending, to list most significant probes first
         probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
         ##Limit dataframe to probes with q-values less than the specified cutoff
