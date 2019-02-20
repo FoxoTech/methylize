@@ -77,7 +77,7 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
     ##Extract column names corresponding to all probes to set row indices for results
     all_probes = meth_data.columns.values.tolist()
     ##List the statistical output to be produced for each probe's regression
-    stat_cols = ["Coefficient","95%CI_lower","95%CI_upper","StandardError","PValue","FDR_QValue"]
+    stat_cols = ["Coefficient","StandardError","PValue","FDR_QValue","95%CI_lower","95%CI_upper"]
     ##Create empty pandas dataframe with probe names as row index to hold stats for each probe
     probe_stats = pd.DataFrame(index=all_probes,columns=stat_cols)
     ##Fill with NAs
@@ -141,7 +141,7 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
                 probe_pval = results.pvalues
                 probe_SE = results.bse
                 ##Fill in the corresponding row of the results dataframe with these values
-                probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1],"StandardError":probe_SE[0],"PValue":probe_pval[0]}
+                probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1]}
             ##If the fit throws a perfect separation error, record which probe this is and move on
             except Exception as ex:
                 if type(ex).__name__ == "PerfectSeparationError":
@@ -179,14 +179,14 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
         for probe in range(meth_data.shape[1]):
             model = sm.OLS(meth_data[all_probes[probe]],pheno_data_array)
             results = model.fit()
-            probe_coef = results.param
+            probe_coef = results.params
             probe_CI = results.conf_int(0.05)   ##returns the lower and upper bounds for the coefficient's 95% confidence interval
             probe_SE = results.bse
             probe_pval = results.pvalues
             ##Fill in the corresponding row of the results dataframe with these values
-            probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef,"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1],"StandardError":probe_SE,"PValue":probe_pval}
+            probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[1][0]}
         ##Correct all the p-values for multiple testing
-        probe_stats["FDR_QValue"] = sm.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")
+        probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")[1]
         ##Sort dataframe by q-value, ascending, to list most significant probes first
         probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
         ##Limit dataframe to probes with q-values less than the specified cutoff
