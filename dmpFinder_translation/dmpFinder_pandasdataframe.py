@@ -169,6 +169,8 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
 
     ##Run OLS regression on continuous phenotype data
     elif regression_method == "linear":
+        ##Make the phenotype data a global variable
+        global pheno_data_array
         ##Check that phenotype data can be converted to a numeric array
         try:
             pheno_data_array = np.array(pheno_data,dtype="float_")
@@ -176,25 +178,50 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
             raise ValueError("Phenotype data cannot be converted to a continuous numeric data type.")
 
         ##Fit least squares regression to each probe of methylation data
-        for probe in range(meth_data.shape[1]):
-            model = sm.OLS(meth_data[all_probes[probe]],pheno_data_array)
-            results = model.fit()
-            probe_coef = results.params
-            probe_CI = results.conf_int(0.05)   ##returns the lower and upper bounds for the coefficient's 95% confidence interval
-            probe_SE = results.bse
-            probe_pval = results.pvalues
-            ##Fill in the corresponding row of the results dataframe with these values
-            probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[1][0]}
+            ##Parallelize across all available cores using a multiprocessing Pool to split up the probes
+        probe_chunks = 100    ##assign chunks of 100 probes to each pool process
+        pool = mp.Pool(processes=mp.cpu_count())   ##only spawn as many processes as CPUs are available
+        chunk_results = pd.concat(pool.map(linear_DMP_regression,(meth_data[all_probes[i:i+probe_chunks]] for i in range(0,meth_data.shape[0],probe_chunks))))
+        ##The below line is giving me errors because the pool needs to iterate over columns in meth_data, not rows
+        #chunk_results = pool.map(linear_DMP_regression,meth_data)
+        #pool.join()
+        pool.close()
+        
+        ##Combine the parallel-processed linear regression results into one pandas dataframe
+        #probe_stats = pd.concat(chunk_results)
+        probe_stats = chunk_results
+        
         ##Correct all the p-values for multiple testing
         probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")[1]
         ##Sort dataframe by q-value, ascending, to list most significant probes first
         probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
         ##Limit dataframe to probes with q-values less than the specified cutoff
         probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] < q_cutoff]
+        if probe_stats.shape[0] == 0:
+            print("No DMPs were found within the q = %s significance cutoff level specified." %q_cutoff)
 
     return probe_stats
 
 
-                         
+def linear_DMP_regression(probe_chunk_data):
+    global pheno_data_array
+    all_chunk_probes = probe_chunk_data.columns.values.tolist()
+    ##List the statistical output to be produced for each probe's regression
+    stat_cols = ["Coefficient","StandardError","PValue","FDR_QValue","95%CI_lower","95%CI_upper"]
+    ##Create empty pandas dataframe with probe names as row index to hold stats for each probe
+    probe_chunk_stats = pd.DataFrame(index=all_chunk_probes,columns=stat_cols)
+    ##Fill with NAs
+    probe_chunk_stats = probe_chunk_stats.fillna(np.nan)
+    ##Fit OLS linear model for each probe individually
+    for probe in range(probe_chunk_data.shape[1]):
+        model = sm.OLS(probe_chunk_data[all_chunk_probes[probe]],pheno_data_array)
+        results = model.fit()
+        probe_coef = results.params
+        probe_CI = results.conf_int(0.05)   ##returns the lower and upper bounds for the coefficient's 95% confidence interval
+        probe_SE = results.bse
+        probe_pval = results.pvalues
+        ##Fill in the corresponding row of the results dataframe with these values
+        probe_chunk_stats.loc[all_chunk_probes[probe]] = {"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[1][0]}
+    return probe_chunk_stats
                          
     
