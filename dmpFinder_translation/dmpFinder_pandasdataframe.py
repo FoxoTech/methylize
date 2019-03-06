@@ -2,6 +2,7 @@ import statsmodels.api as sm
 import numpy as np
 import pandas as pd
 import multiprocessing as mp
+from joblib import Parallel, delayed, cpu_count
 
 def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrink_var=False):
     """
@@ -180,30 +181,41 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
 
         ##Fit least squares regression to each probe of methylation data
             ##Parallelize across all available cores using a multiprocessing Pool to split up the probes
-        probe_chunk_size = int(meth_data.shape[1]/mp.cpu_count()) ##divide the total number of probes by the available processors to assign chunks
-        pool = mp.Pool(processes=mp.cpu_count())   ##only spawn as many processes as CPUs are available
-        probe_chunks = [(meth_data[all_probes[i:i+probe_chunk_size]],pheno_data_array,probe_stats) for i in range(0,meth_data.shape[0],probe_chunk_size)]
-        chunk_results = pool.map(linear_DMP_regression,probe_chunks)
+        #probe_chunk_size = int(meth_data.shape[1]/mp.cpu_count()) ##divide the total number of probes by the available processors to assign chunks
+        #pool = mp.Pool(processes=mp.cpu_count())   ##only spawn as many processes as CPUs are available
+        #probe_chunks = [(meth_data[all_probes[i:i+probe_chunk_size]],pheno_data_array,probe_stats) for i in range(0,meth_data.shape[0],probe_chunk_size)]
+        #chunk_results = pool.map(linear_DMP_regression,probe_chunks)
         ##The below line is giving me errors because the pool needs to iterate over columns in meth_data, not rows
         #chunk_results = pool.map(linear_DMP_regression,meth_data)
-        pool.close()
-        pool.join()
-        print(type(chunk_results))
-        print(len(chunk_results))
+        #pool.close()
+        #pool.join()
+        #print(type(chunk_results))
+        #print(len(chunk_results))
+        
+        ##Try using joblib instead to parallelize linear regression calculation
+        f = delayed(linear_DMP_regression_single_probe)
+        #f = delayed(dummy_function)
+        n_jobs = cpu_count()
+        
+        with Parallel(n_jobs=n_jobs) as parallel:
+            probe_stat_rows = parallel(f(meth_data[x],pheno_data_array) for x in meth_data)
+            linear_probe_stats = pd.concat(probe_stat_rows,axis=1) 
         
         ##Combine the parallel-processed linear regression results into one pandas dataframe
         #probe_stats = pd.concat(chunk_results)
-        linear_probe_stats = pd.concat(chunk_results)
+        #linear_probe_stats = pd.concat(chunk_results)
+        probe_stats = linear_probe_stats.T
+        
         
         ##Correct all the p-values for multiple testing
-        linear_probe_stats["FDR_QValue"] = sm.stats.multipletests(linear_probe_stats["PValue"],alpha=0.05,method="fdr_bh")[1]
+        probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")[1]
         ##Sort dataframe by q-value, ascending, to list most significant probes first
-        linear_probe_stats = linear_probe_stats.sort_values("FDR_QValue",axis=0)
+        probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
         ##Limit dataframe to probes with q-values less than the specified cutoff
-        linear_probe_stats = linear_probe_stats.loc[linear_probe_stats["FDR_QValue"] < q_cutoff]
-        if linear_probe_stats.shape[0] == 0:
+        probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] < q_cutoff]
+        if probe_stats.shape[0] == 0:
             print("No DMPs were found within the q = %s significance cutoff level specified." %q_cutoff)
-        probe_stats = linear_probe_stats
+        #probe_stats = linear_probe_stats
             
     return probe_stats
 
@@ -221,7 +233,7 @@ def linear_DMP_regression(probe_chunk_data):
     #probe_chunk_stats = probe_chunk_stats.fillna(np.nan)
     ##Fit OLS linear model for each probe individually
     for probe in range(probe_chunk_data.shape[1]):
-        model = sm.OLS(probe_chunk_data[all_chunk_probes[probe]],pheno_data_array)
+        model = sm.OLS(probe_chunk_data[all_chunk_probes[probe]],phenotype_data_array)
         results = model.fit()
         probe_coef = results.params
         probe_CI = results.conf_int(0.05)   ##returns the lower and upper bounds for the coefficient's 95% confidence interval
@@ -233,4 +245,22 @@ def linear_DMP_regression(probe_chunk_data):
     return probe_chunk_stats
     #return probe_stats
                          
-    
+
+def linear_DMP_regression_single_probe(probe_data,phenotypes):
+    ##Find the probe name for the single pandas series of data contained in probe_data
+    probe_ID = probe_data.name
+    ##Fit OLS linear model individual probe
+    model = sm.OLS(probe_data,phenotypes)
+    results = model.fit()
+    probe_coef = results.params
+    probe_CI = results.conf_int(0.05)   ##returns the lower and upper bounds for the coefficient's 95% confidence interval
+    probe_SE = results.bse
+    probe_pval = results.pvalues
+    ##Fill in the corresponding row of the results dataframe with these values
+    probe_stats_row = pd.Series({"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[1][0]},name=probe_ID)
+    return probe_stats_row
+
+def dummy_function(probe_data,phenotypes):
+    print(probe_data)
+    print(type(probe_data))
+    return probe_data
