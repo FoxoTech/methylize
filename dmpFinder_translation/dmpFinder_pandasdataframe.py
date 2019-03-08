@@ -1,7 +1,6 @@
 import statsmodels.api as sm
 import numpy as np
 import pandas as pd
-import multiprocessing as mp
 from joblib import Parallel, delayed, cpu_count
 
 def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrink_var=False):
@@ -126,33 +125,30 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
             pheno_data_binary = np.array(pheno_data_binary,dtype=np.int)
             ##Print a message to let the user know what values were converted to zeroes and ones
             print("Because phenotypes were provided as values other than 0 and 1, all samples with the phenotype %s were assigned a value of 0 and all samples with the phenotype %s were assigned a value of 1 for the logistic regression analysis." % (list(pheno_options)[0],list(pheno_options)[1]))
-
-        ##Create variables to track perfect separation errors and list
-            ##which probes were unable to be analyzed with logistic regression
-        perfect_sep_probes = []
-        ##Fit logistic regression for each probe of methylation data
-        for probe in range(meth_data.shape[1]):
-            logit = sm.Logit(pheno_data_binary,meth_data[all_probes[probe]])
-            ##Try to extract the results of the logistic regression from the fit object
-            try:
-                results = logit.fit()
-                ##Extract desired statistical measures from logistic fit object
-                probe_coef = results.params
-                probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
-                probe_CI = np.array(probe_CI)  ##conf_int returns a pandas dataframe, easier to work with array for extracting results though
-                probe_pval = results.pvalues
-                probe_SE = results.bse
-                ##Fill in the corresponding row of the results dataframe with these values
-                probe_stats.loc[all_probes[probe]] = {"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1]}
-            ##If the fit throws a perfect separation error, record which probe this is and move on
-            except Exception as ex:
-                if type(ex).__name__ == "PerfectSeparationError":
-                    perfect_sep_probes.append(all_probes[probe])
-                elif type(ex).__name__ == "LinAlgError":
-                    print("Probe %s encountered a LinAlgError: Singular matrix." % all_probes[probe])
-                else:
-                    raise ex
-        print(probe_stats)
+        
+        ##Fit least squares regression to each probe of methylation data
+            ##Parallelize across all available cores using joblib
+        f = delayed(logistic_DMP_regression)
+        n_jobs = cpu_count()
+        
+        with Parallel(n_jobs=n_jobs) as parallel:
+            ##Apply the linear regression function to each column in meth_data (all use the same phenotype data array)
+            probe_stat_rows = parallel(f(meth_data[x],pheno_data_binary) for x in meth_data)
+            ##Concatenate the probes' statistics together into one dataframe
+            logistic_probe_stats = pd.concat(probe_stat_rows,axis=1) 
+        
+        ##Combine the parallel-processed linear regression results into one pandas dataframe
+            ##The concatenation after joblib's parallellization produced a dataframe with a column for each probe
+            ##so transpose it to probes by rows instead
+        probe_stats = logistic_probe_stats.T
+        
+        ##Pull out probes that encountered perfect separation or linear algebra errors to remove them from the 
+            ##final stats dataframe while alerting the user to the issues fitting regressions to these individual probes
+        perfect_sep_probes = probe_stats.index[probe_stats["PValue"]==-999]
+        linalg_error_probes = probe_stats.index[probe_stats["PValue"]==-995]
+        probe_stats = probe_stats.drop(index=perfect_sep_probes)
+        probe_stats = probe_stats.drop(index=linalg_error_probes)
+        
         ##Remove any rows that still have NAs (probes that couldn't be analyzed due to perfect separation or LinAlgError)
         probe_stats = probe_stats.dropna(axis=0,how="all")
         ##Correct all the p-values for multiple testing
@@ -161,12 +157,18 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
         probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
         ##Limit dataframe to probes with q-values less than the specified cutoff
         probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] < q_cutoff]
+        
         ##Print a message to let the user know how many and which probes failed
             ##with perfect separation
         if len(perfect_sep_probes) > 0:
             print("%s probes failed the logistic regression analysis due to perfect separation and could not be included in the final results." % len(perfect_sep_probes))
             print("Probes with perfect separation errors:")
             for i in perfect_sep_probes:
+                print(i)
+        if len(linalg_error_probes) > 0:
+            print("%s probes failed the logistic regression analysis due to encountering a LinAlgError: Singular matrix and could not be included in the final results." % len(linalg_error_probes))
+            print("Probes with LinAlgError:")
+            for i in linalg_error_probes:
                 print(i)
 
     ##Run OLS regression on continuous phenotype data
@@ -180,32 +182,20 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
             raise ValueError("Phenotype data cannot be converted to a continuous numeric data type.")
 
         ##Fit least squares regression to each probe of methylation data
-            ##Parallelize across all available cores using a multiprocessing Pool to split up the probes
-        #probe_chunk_size = int(meth_data.shape[1]/mp.cpu_count()) ##divide the total number of probes by the available processors to assign chunks
-        #pool = mp.Pool(processes=mp.cpu_count())   ##only spawn as many processes as CPUs are available
-        #probe_chunks = [(meth_data[all_probes[i:i+probe_chunk_size]],pheno_data_array,probe_stats) for i in range(0,meth_data.shape[0],probe_chunk_size)]
-        #chunk_results = pool.map(linear_DMP_regression,probe_chunks)
-        ##The below line is giving me errors because the pool needs to iterate over columns in meth_data, not rows
-        #chunk_results = pool.map(linear_DMP_regression,meth_data)
-        #pool.close()
-        #pool.join()
-        #print(type(chunk_results))
-        #print(len(chunk_results))
-        
-        ##Try using joblib instead to parallelize linear regression calculation
-        f = delayed(linear_DMP_regression_single_probe)
-        #f = delayed(dummy_function)
+            ##Parallelize across all available cores using joblib
+        f = delayed(linear_DMP_regression)
         n_jobs = cpu_count()
         
         with Parallel(n_jobs=n_jobs) as parallel:
+            ##Apply the linear regression function to each column in meth_data (all use the same phenotype data array)
             probe_stat_rows = parallel(f(meth_data[x],pheno_data_array) for x in meth_data)
+            ##Concatenate the probes' statistics together into one dataframe
             linear_probe_stats = pd.concat(probe_stat_rows,axis=1) 
         
         ##Combine the parallel-processed linear regression results into one pandas dataframe
-        #probe_stats = pd.concat(chunk_results)
-        #linear_probe_stats = pd.concat(chunk_results)
+            ##The concatenation after joblib's parallellization produced a dataframe with a column for each probe
+            ##so transpose it to probes by rows instead
         probe_stats = linear_probe_stats.T
-        
         
         ##Correct all the p-values for multiple testing
         probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")[1]
@@ -213,40 +203,16 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
         probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
         ##Limit dataframe to probes with q-values less than the specified cutoff
         probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] < q_cutoff]
+        ##Alert the user if there are no significant DMPs within the cutoff range they specified
         if probe_stats.shape[0] == 0:
             print("No DMPs were found within the q = %s significance cutoff level specified." %q_cutoff)
-        #probe_stats = linear_probe_stats
-            
+    
+    ##Return a dataframe of regression statistics with a row for each probe and a column for each statistical measure
     return probe_stats
 
-
-def linear_DMP_regression(probe_chunk_data):
-    global pheno_data_array
-    global probe_stats
-    all_chunk_probes = probe_chunk_data.columns.values.tolist()
-    probe_chunk_stats = probe_stats.loc[all_chunk_probes]
-    ##List the statistical output to be produced for each probe's regression
-    #stat_cols = ["Coefficient","StandardError","PValue","FDR_QValue","95%CI_lower","95%CI_upper"]
-    ##Create empty pandas dataframe with probe names as row index to hold stats for each probe
-    #probe_chunk_stats = pd.DataFrame(index=all_chunk_probes,columns=stat_cols)
-    ##Fill with NAs
-    #probe_chunk_stats = probe_chunk_stats.fillna(np.nan)
-    ##Fit OLS linear model for each probe individually
-    for probe in range(probe_chunk_data.shape[1]):
-        model = sm.OLS(probe_chunk_data[all_chunk_probes[probe]],phenotype_data_array)
-        results = model.fit()
-        probe_coef = results.params
-        probe_CI = results.conf_int(0.05)   ##returns the lower and upper bounds for the coefficient's 95% confidence interval
-        probe_SE = results.bse
-        probe_pval = results.pvalues
-        ##Fill in the corresponding row of the results dataframe with these values
-        #probe_stats.loc[all_chunk_probes[probe]] = {"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[1][0]}
-        probe_chunk_stats.loc[all_chunk_probes[probe]] = {"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[1][0]}
-    return probe_chunk_stats
-    #return probe_stats
                          
 
-def linear_DMP_regression_single_probe(probe_data,phenotypes):
+def linear_DMP_regression(probe_data,phenotypes):
     ##Find the probe name for the single pandas series of data contained in probe_data
     probe_ID = probe_data.name
     ##Fit OLS linear model individual probe
@@ -260,7 +226,28 @@ def linear_DMP_regression_single_probe(probe_data,phenotypes):
     probe_stats_row = pd.Series({"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[1][0]},name=probe_ID)
     return probe_stats_row
 
-def dummy_function(probe_data,phenotypes):
-    print(probe_data)
-    print(type(probe_data))
-    return probe_data
+def logistic_DMP_regression(probe_data,phenotypes):
+    ##Find the probe name for the single pandas series of data contained in probe_data
+    probe_ID = probe_data.name
+    ##Fit the logistic model to the individual probe
+    logit = sm.Logit(phenotypes,probe_data)
+    try:
+        results = logit.fit()
+        ##Extract desired statistical measures from logistic fit object
+        probe_coef = results.params
+        probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
+        probe_CI = np.array(probe_CI)  ##conf_int returns a pandas dataframe, easier to work with array for extracting results though
+        probe_pval = results.pvalues
+        probe_SE = results.bse
+        ##Fill in the corresponding row of the results dataframe with these values
+        probe_stats_row = pd.Series({"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[0][1]},name=probe_ID)
+    except Exception as ex:
+        ##If there's a perfect separation error that prevents the model from being fit (like due to small sample sizes),
+            ##add that probe name to a list to alert the user later that these probes could not be fit with a logistic regression
+        if type(ex).__name__ == "PerfectSeparationError":
+            probe_stats_row = pd.Series({"Coefficient":-999,"StandardError":-999,"PValue":-999,"95%CI_lower":-999,"95%CI_upper":-999},name=probe_ID)
+        elif type(ex).__name__ == "LinAlgError":
+            probe_stats_row = pd.Series({"Coefficient":-995,"StandardError":-995,"PValue":-995,"95%CI_lower":-995,"95%CI_upper":-995},name=probe_ID)
+        else:
+            raise ex
+    return probe_stats_row
