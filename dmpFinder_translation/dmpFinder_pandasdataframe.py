@@ -2,6 +2,7 @@ import statsmodels.api as sm
 import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed, cpu_count
+import matplotlib.pyplot as plt
 
 def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrink_var=False):
     """
@@ -213,6 +214,31 @@ def detect_DMPs(meth_data,pheno_data,regression_method="linear",q_cutoff=1,shrin
                          
 
 def linear_DMP_regression(probe_data,phenotypes):
+    """
+    This function performs a linear regression on a single probe's worth of methylation
+    data (in the form of M-values). It is called by the detect_DMPs.
+
+    Inputs and Parameters
+    ---------------------------------------------------------------------------
+        probe_data: A pandas Series for a single probe with a methylation M-value 
+                    for each sample in the analysis. The Series name corresponds 
+                    to the probe ID, and the Series is extracted from the meth_data
+                    DataFrame through a parallellized loop in detect_DMPs.
+        phenotypes: A numpy array of numeric phenotypes with one phenotype per
+                    sample (so it must be the same length as probe_data). This is 
+                    the same object as the pheno_data input to detect_DMPs after
+                    it has been checked for data type and converted to the
+                    numpy array pheno_data_array.
+
+    Returns:
+        A pandas Series of regression statistics for the single probe analyzed.
+        The columns of regression statistics are as follows:
+            - regression coefficient
+            - lower limit of the coefficient's 95% confidence interval
+            - upper limit of the coefficient's 95% confidence interval
+            - standard error
+            - p-value
+    """
     ##Find the probe name for the single pandas series of data contained in probe_data
     probe_ID = probe_data.name
     ##Fit OLS linear model individual probe
@@ -227,6 +253,40 @@ def linear_DMP_regression(probe_data,phenotypes):
     return probe_stats_row
 
 def logistic_DMP_regression(probe_data,phenotypes):
+    """
+    This function performs a logistic regression on a single probe's worth of methylation
+    data (in the form of M-values). It is called by the detect_DMPs.
+
+    Inputs and Parameters
+    ---------------------------------------------------------------------------
+        probe_data: A pandas Series for a single probe with a methylation M-value 
+                    for each sample in the analysis. The Series name corresponds 
+                    to the probe ID, and the Series is extracted from the meth_data
+                    DataFrame through a parallellized loop in detect_DMPs.
+        phenotypes: A numpy array of binary phenotypes with one phenotype per
+                    sample (so it must be the same length as probe_data). This is 
+                    the same object as the pheno_data input to detect_DMPs after
+                    it has been checked for data type and converted to the
+                    numpy array pheno_data_binary.
+
+    Returns:
+        A pandas Series of regression statistics for the single probe analyzed.
+        The columns of regression statistics are as follows:
+            - regression coefficient
+            - lower limit of the coefficient's 95% confidence interval
+            - upper limit of the coefficient's 95% confidence interval
+            - standard error
+            - p-value
+            
+        If the logistic regression was unsuccessful in fitting to the data due
+        to a Perfect Separation Error (as may be the case with small sample sizes)
+        or a Linear Algebra Error, the exception will be caught and the probe_stats_row
+        output will contain dummy values to flag the error. Perfect Separation Errors
+        are coded with the value -999 and Linear Algebra Errors are coded with value
+        -995. These rows are processed and removed in the next step of detect_DMPs to
+        prevent them from interfering with the final analysis and p-value correction
+        while printing a list of the unsuccessful probes to alert the user to the issues.
+    """
     ##Find the probe name for the single pandas series of data contained in probe_data
     probe_ID = probe_data.name
     ##Fit the logistic model to the individual probe
@@ -251,3 +311,75 @@ def logistic_DMP_regression(probe_data,phenotypes):
         else:
             raise ex
     return probe_stats_row
+
+
+def volcano_plot(stats_results,cutoff=0.05):
+    """
+    This function writes the pandas DataFrame output of detect_DMPs to a CSV file
+    named by the user. The DataFrame has a row for every successfully tested probe
+    and columns with different regression statistics as follows:
+            - regression coefficient
+            - lower limit of the coefficient's 95% confidence interval
+            - upper limit of the coefficient's 95% confidence interval
+            - standard error
+            - p-value
+            - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
+
+    Inputs and Parameters
+    ---------------------------------------------------------------------------
+        stats_results: A pandas DataFrame output by the function detect_DMPs.
+        cutoff: The significance level that will be used to highlight the most
+                significant adjusted p-values (FDR Q-values) on the plot.
+                (default = 0.05 alpha level)
+        
+    Returns:
+        Displays a plot, but does not directly return an object.
+        The data is color coded and displayed as follows:
+            - the negative log of adjusted p-values is plotted on the y-axis
+            - the regression coefficient beta value is plotted on the x-axis
+            - the significance cutoff level appears as a horizontal gray dashed line
+            - non-significant points appear in light gray
+            - significant points with positive correlations (hypermethylated probes)
+              appear in red
+            - significant points with negative correlations (hypomethylated probes)
+              appear in blue
+    """
+    colors = []
+    for i in range(len(stats_results.FDR_QValue)):
+        if stats_results.FDR_QValue[i] < cutoff:
+            if stats_results.Coefficient[i] > 0:
+                colors.append("red")
+            else:
+                colors.append("blue")
+        else:
+            colors.append("silver")
+    plt.scatter(stats_results.Coefficient,-np.log10(stats_results.FDR_QValue),c=colors)
+    plt.ylabel("-log10 (FDR Adjusted Q Value)")
+    plt.xlabel("Beta")
+    plt.axhline(y=-np.log10(cutoff), color="gray", linestyle='--')
+    plt.show()
+
+
+def write_results_to_CSV(stats_results,filename):
+    """
+    This function writes the pandas DataFrame output of detect_DMPs to a CSV file
+    named by the user. The DataFrame has a row for every successfully tested probe
+    and columns with different regression statistics as follows:
+            - regression coefficient
+            - lower limit of the coefficient's 95% confidence interval
+            - upper limit of the coefficient's 95% confidence interval
+            - standard error
+            - p-value
+            - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
+
+    Inputs and Parameters
+    ---------------------------------------------------------------------------
+        stats_results: A pandas DataFrame output by the function detect_DMPs.
+        filename: A string that will be used to name the resulting .CSV file.
+        
+    Returns:
+        Writes a CSV file, but does not directly return an object.
+        The CSV will include the DataFrame column names as headers and the index
+        of the DataFrame as row names for each probe.
+    """
+    stats_results.to_csv(filename)
