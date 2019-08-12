@@ -1,0 +1,11 @@
+numpy
+scipy
+pandas
+statsmodels
+pytest
+coverage
+coveralls-python
+sphinxcontrib-apidoc
+m2r
+nbsphinx
+tqdm
