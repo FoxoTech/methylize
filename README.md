@@ -1,7 +1,7 @@
 `methylize` is a python package for analyzing output from Illumina methylation arrays.
 View on [ReadTheDocs.](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/)
 
-[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylize/badge/?version=latest)](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv)  [![CircleCI](https://circleci.com/gh/LifeEGX/methylize.svg?style=shield)](https://circleci.com/gh/LifeEGX/methylize)  [![Codacy Badge](https://api.codacy.com/project/badge/Grade/36c282629145444facdd2d96b4462afa)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methylize&amp;utm_campaign=Badge_Grade)
+[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylize/badge/?version=latest)](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv)  [![CircleCI](https://circleci.com/gh/LifeEGX/methylize.svg?style=shield&circle-token=6a80b317c9e581e0969cdc73cc3233b3c70b9dbd)](https://circleci.com/gh/LifeEGX/methylize)  [![Codacy Badge](https://api.codacy.com/project/badge/Grade/36c282629145444facdd2d96b4462afa)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methylize&amp;utm_campaign=Badge_Grade)
 [![Coverage Status](https://coveralls.io/repos/github/LifeEGX/methylize/badge.svg?t=uf7qX4)](https://coveralls.io/github/LifeEGX/methylize)
 
 ## Methylize Package
