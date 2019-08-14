@@ -68,7 +68,7 @@ def combine_mds(*args, **kwargs):
             except Exception as e:
                 raise FileNotFoundError ("Either your files don't exist, or they are not pickled: {0}".format(e))
     # kwargs
-    save = kargs.get('save', False)
+    save = kwargs.get('save', False)
     silent = kwargs.get('silent', False)
     verbose = kwargs.get('verbose', True)
     PRINT = print if verbose else _noprint
