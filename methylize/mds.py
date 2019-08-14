@@ -85,7 +85,8 @@ def combine_mds(*args, **kwargs):
     xy_lims = []
     
     # PROCESS MDS
-    fig = None    
+    fig = None   
+    ax = None
     for idx, df in enumerate(list_of_dfs):
         if df.shape[1] > df.shape[0]: # put probes in rows
             df = df.transpose()    
@@ -97,7 +98,7 @@ def combine_mds(*args, **kwargs):
         #-- only draw last iteration: draw_box = True if idx == len(list_of_dfs)-1 else False
         #-- draw after complete, using dimensions provided
         try:
-            fig = mds_plot(df, color_num=idx, save=save, verbose=verbose, silent=silent, return_plot_obj=True, fig=fig, draw_box=True)
+            fig,ax = mds_plot(df, color_num=idx, save=save, verbose=verbose, silent=silent, return_plot_obj=True, fig=fig, draw_box=True, ax=ax)
             subplots.append(fig)
             xy_lims.append( (fig.axes[0].get_xlim(), fig.axes[0].get_ylim()) ) # (x_range, y_range)
         except Exception as e:
@@ -126,12 +127,13 @@ def combine_mds(*args, **kwargs):
     avg_y_range_max = int(sum(item[1][1] for item in xy_lims)/len(xy_lims))
     xy_lim = ((avg_x_range_min, avg_x_range_max), (avg_y_range_min, avg_y_range_max))
     PRINT('AVG',xy_lim)
-    fig=None
+    fig = None
+    ax = None
     for idx, df in enumerate(list_of_dfs):
         if df.shape[1] > df.shape[0]: # put probes in rows
             df = df.transpose()    
         PRINT(idx, fig)
-        fig = mds_plot(df, color_num=idx, save=save, verbose=verbose, silent=silent, return_plot_obj=True, fig=fig, draw_box=True, xy_lim=xy_lim)
+        fig,ax = mds_plot(df, color_num=idx, save=save, verbose=verbose, silent=silent, return_plot_obj=True, fig=fig, draw_box=True, xy_lim=xy_lim, ax=ax)
     fig.axes[0].set_xlim([x_range_min, x_range_max])
     fig.axes[0].set_ylim([y_range_min, y_range_max])
 
@@ -172,7 +174,7 @@ def combine_mds(*args, **kwargs):
     plt.close()
 
 
-def mds_plot(df, color_num=0, filter_stdev=2, verbose=True, save=False, silent=False, return_plot_obj=True, fig=None, draw_box=False, xy_lim=None):
+def mds_plot(df, color_num=0, filter_stdev=2, verbose=True, save=False, silent=False, return_plot_obj=True, fig=None, draw_box=False, xy_lim=None, ax=None):
     """ based on methQC's plot, but this version takes a plt object and adds to it from a wrapper function.
     
     
@@ -319,7 +321,9 @@ def mds_plot(df, color_num=0, filter_stdev=2, verbose=True, save=False, silent=F
                                    'xkcd:blue', 'xkcd:green', 'xkcd:coral', 'xkcd:lightblue', 'xkcd:magenta', 'xkcd:goldenrod', 'xkcd:plum', 'xkcd:beige',
                                    'xkcd:orange', 'xkcd:orchid', 'xkcd:silver', 'xkcd:purple', 'xkcd:pink', 'xkcd:teal', 'xkcd:tomato', 'xkcd:yellow',
                                    'xkcd:olive', 'xkcd:lavender', 'xkcd:indigo', 'xkcd:black', 'xkcd:azure', 'xkcd:brown', 'xkcd:aquamarine', 'xkcd:darkblue'])) 
-        ax = fig.add_subplot(1,1,1)
+        if not ax:
+            # passing the 'ax' (fig.axes[0]) object back in will avoid the plotlib warning.
+            ax = fig.add_subplot(1,1,1)
 
         ax.scatter(md2[:, 0], md2[:, 1], s=DOTSIZE, c=COLORSET.get(color_num)) # RETAINED        
         ax.scatter(mds_transformed[:, 0], mds_transformed[:, 1], s=DOTSIZE, c='xkcd:ivory', edgecolor='black', linewidth='0.2',) # EXCLUDED
@@ -342,7 +346,7 @@ def mds_plot(df, color_num=0, filter_stdev=2, verbose=True, save=False, silent=F
             ax.hlines([minY, maxY], minX, maxX, color=COLORSET.get(color_num,'red'), linestyle=':')
 
         if return_plot_obj == True:
-            return fig
+            return fig, ax
         elif silent == True:
             # take the original dataframe (df) and remove samples that are outside the sample thresholds, returning a new dataframe
             df.drop(df.index[df_indexes_to_exclude], inplace=True)
