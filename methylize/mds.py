@@ -94,7 +94,7 @@ def combine_mds(*args, **kwargs):
             sample_source[sample] = idx
 
         # PLOT separate MDS
-        PRINT(idx, fig, ax)
+        # PRINT(idx, fig, ax)
         #-- only draw last iteration: draw_box = True if idx == len(list_of_dfs)-1 else False
         #-- draw after complete, using dimensions provided
         try:
@@ -111,7 +111,7 @@ def combine_mds(*args, **kwargs):
     y_range_max = max(item[1][1] for item in xy_lims)
     fig.axes[0].set_xlim([x_range_min, x_range_max])
     fig.axes[0].set_ylim([y_range_min, y_range_max])
-    PRINT(int(x_range_min), int(x_range_max), int(y_range_min), int(y_range_max))    
+    #PRINT('full chart range', int(x_range_min), int(x_range_max), int(y_range_min), int(y_range_max))    
     if not silent:
         plt.show()
     plt.close()
@@ -126,13 +126,13 @@ def combine_mds(*args, **kwargs):
     avg_y_range_min = int(sum(item[1][0] for item in xy_lims)/len(xy_lims))
     avg_y_range_max = int(sum(item[1][1] for item in xy_lims)/len(xy_lims))
     xy_lim = ((avg_x_range_min, avg_x_range_max), (avg_y_range_min, avg_y_range_max))
-    PRINT('AVG',xy_lim)
+    PRINT('Average MDS window coordinate range: (x: {0}, y:{1}'.format(xy_lim[0], xy_lim[1]))
     fig = None
     ax = None
     for idx, df in enumerate(list_of_dfs):
         if df.shape[1] > df.shape[0]: # put probes in rows
             df = df.transpose()    
-        PRINT(idx, fig, ax)
+        # PRINT(idx, fig, ax)
         fig,ax = mds_plot(df, color_num=idx, save=save, verbose=verbose, silent=silent, return_plot_obj=True, fig=fig, draw_box=True, xy_lim=xy_lim, ax=ax)
     fig.axes[0].set_xlim([x_range_min, x_range_max])
     fig.axes[0].set_ylim([y_range_min, y_range_max])
@@ -154,7 +154,8 @@ def combine_mds(*args, **kwargs):
         if i % 4 == 1: # 1, 5, 9, etc -- this is the second data set applied to plot.
             excluded.extend( DD.get_offsets().tolist() )
     if verbose:            
-        PRINT( round(100*len(retained) / (len(retained) + len(excluded))), '% retained overall')
+        PRINT('{0} % retained overall ({1} out of {2})'.format( round(100*len(retained) / (len(retained) + len(excluded))),
+                                                              len(retained), len(excluded) ))
 
     # NOT USED: calculate percent excluded across datasets: -- not needed.
     def within(coord, xy_lim):
