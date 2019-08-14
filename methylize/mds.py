@@ -405,7 +405,7 @@ def _load_data(filepaths):
         dfs.append(df)
     return dfs
 
-def _noprint(message):
+def _noprint(*messages):
     """ a helper function to suppress print() if not verbose mode. """
     pass
     
