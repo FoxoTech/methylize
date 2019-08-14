@@ -321,9 +321,11 @@ def mds_plot(df, color_num=0, filter_stdev=2, verbose=True, save=False, silent=F
                                    'xkcd:blue', 'xkcd:green', 'xkcd:coral', 'xkcd:lightblue', 'xkcd:magenta', 'xkcd:goldenrod', 'xkcd:plum', 'xkcd:beige',
                                    'xkcd:orange', 'xkcd:orchid', 'xkcd:silver', 'xkcd:purple', 'xkcd:pink', 'xkcd:teal', 'xkcd:tomato', 'xkcd:yellow',
                                    'xkcd:olive', 'xkcd:lavender', 'xkcd:indigo', 'xkcd:black', 'xkcd:azure', 'xkcd:brown', 'xkcd:aquamarine', 'xkcd:darkblue'])) 
-        if not ax:
+        if not ax and fig.axes != []:
             if verbose:
                 print('axes', ax, fig.axes)
+            ax = fig.axes[0] # appears to get implicitly created when plot.grid() runs
+        elif not ax:
             # passing the 'ax' (fig.axes[0]) object back in will avoid the plotlib warning.
             ax = fig.add_subplot(1,1,1)
 
