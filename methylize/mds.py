@@ -94,13 +94,14 @@ def combine_mds(*args, **kwargs):
             sample_source[sample] = idx
 
         # PLOT separate MDS
-        PRINT(idx, fig)
+        PRINT(idx, fig, ax)
         #-- only draw last iteration: draw_box = True if idx == len(list_of_dfs)-1 else False
         #-- draw after complete, using dimensions provided
         try:
             fig,ax = mds_plot(df, color_num=idx, save=save, verbose=verbose, silent=silent, return_plot_obj=True, fig=fig, draw_box=True, ax=ax)
             subplots.append(fig)
             xy_lims.append( (fig.axes[0].get_xlim(), fig.axes[0].get_ylim()) ) # (x_range, y_range)
+            PRINT(idx, fig, ax)
         except Exception as e:
             PRINT(e)      
 
@@ -132,8 +133,9 @@ def combine_mds(*args, **kwargs):
     for idx, df in enumerate(list_of_dfs):
         if df.shape[1] > df.shape[0]: # put probes in rows
             df = df.transpose()    
-        PRINT(idx, fig)
+        PRINT(idx, fig, ax)
         fig,ax = mds_plot(df, color_num=idx, save=save, verbose=verbose, silent=silent, return_plot_obj=True, fig=fig, draw_box=True, xy_lim=xy_lim, ax=ax)
+        PRINT(idx, fig, ax)        
     fig.axes[0].set_xlim([x_range_min, x_range_max])
     fig.axes[0].set_ylim([y_range_min, y_range_max])
 
