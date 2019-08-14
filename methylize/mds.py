@@ -323,11 +323,11 @@ def mds_plot(df, color_num=0, filter_stdev=2, verbose=True, save=False, silent=F
                                    'xkcd:blue', 'xkcd:green', 'xkcd:coral', 'xkcd:lightblue', 'xkcd:magenta', 'xkcd:goldenrod', 'xkcd:plum', 'xkcd:beige',
                                    'xkcd:orange', 'xkcd:orchid', 'xkcd:silver', 'xkcd:purple', 'xkcd:pink', 'xkcd:teal', 'xkcd:tomato', 'xkcd:yellow',
                                    'xkcd:olive', 'xkcd:lavender', 'xkcd:indigo', 'xkcd:black', 'xkcd:azure', 'xkcd:brown', 'xkcd:aquamarine', 'xkcd:darkblue'])) 
-        if not ax:
+        if not ax and fig.axes == []:
             # passing the 'ax' (fig.axes[0]) object back in will avoid the plotlib warning.
             ax = fig.add_subplot(1,1,1)
 
-        ax.scatter(md2[:, 0], md2[:, 1], s=DOTSIZE, c=COLORSET.get(color_num)) # RETAINED        
+        ax.scatter(md2[:, 0], md2[:, 1], s=DOTSIZE, c=COLORSET.get(color_num,'black')) # RETAINED        
         ax.scatter(mds_transformed[:, 0], mds_transformed[:, 1], s=DOTSIZE, c='xkcd:ivory', edgecolor='black', linewidth='0.2',) # EXCLUDED
 
         #ax = fig.add_subplot(1,1,1, label='label'+str(color_num)) -- failed
