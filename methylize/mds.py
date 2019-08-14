@@ -155,7 +155,7 @@ def combine_mds(*args, **kwargs):
             excluded.extend( DD.get_offsets().tolist() )
     if verbose:            
         PRINT('{0} % retained overall ({1} out of {2} samples)'.format( round(100*len(retained) / (len(retained) + len(excluded))),
-                                                              len(retained), len(len(retained) + len(excluded) ))
+                                                              len(retained), len(retained) + len(excluded) ))
 
     # NOT USED: calculate percent excluded across datasets: -- not needed.
     def within(coord, xy_lim):
