@@ -101,7 +101,6 @@ def combine_mds(*args, **kwargs):
             fig,ax = mds_plot(df, color_num=idx, save=save, verbose=verbose, silent=silent, return_plot_obj=True, fig=fig, draw_box=True, ax=ax)
             subplots.append(fig)
             xy_lims.append( (fig.axes[0].get_xlim(), fig.axes[0].get_ylim()) ) # (x_range, y_range)
-            PRINT(idx, fig, ax)
         except Exception as e:
             PRINT(e)      
 
@@ -135,7 +134,6 @@ def combine_mds(*args, **kwargs):
             df = df.transpose()    
         PRINT(idx, fig, ax)
         fig,ax = mds_plot(df, color_num=idx, save=save, verbose=verbose, silent=silent, return_plot_obj=True, fig=fig, draw_box=True, xy_lim=xy_lim, ax=ax)
-        PRINT(idx, fig, ax)        
     fig.axes[0].set_xlim([x_range_min, x_range_max])
     fig.axes[0].set_ylim([y_range_min, y_range_max])
 
@@ -323,7 +321,8 @@ def mds_plot(df, color_num=0, filter_stdev=2, verbose=True, save=False, silent=F
                                    'xkcd:blue', 'xkcd:green', 'xkcd:coral', 'xkcd:lightblue', 'xkcd:magenta', 'xkcd:goldenrod', 'xkcd:plum', 'xkcd:beige',
                                    'xkcd:orange', 'xkcd:orchid', 'xkcd:silver', 'xkcd:purple', 'xkcd:pink', 'xkcd:teal', 'xkcd:tomato', 'xkcd:yellow',
                                    'xkcd:olive', 'xkcd:lavender', 'xkcd:indigo', 'xkcd:black', 'xkcd:azure', 'xkcd:brown', 'xkcd:aquamarine', 'xkcd:darkblue'])) 
-        if not ax and fig.axes == []:
+        if not ax:
+            PRINT('axes', ax, fig.axes)
             # passing the 'ax' (fig.axes[0]) object back in will avoid the plotlib warning.
             ax = fig.add_subplot(1,1,1)
 
