@@ -111,7 +111,7 @@ def combine_mds(*args, **kwargs):
     fig.axes[0].set_xlim([x_range_min, x_range_max])
     fig.axes[0].set_ylim([y_range_min, y_range_max])
     PRINT(int(x_range_min), int(x_range_max), int(y_range_min), int(y_range_max))    
-    if silent:
+    if not silent:
         plt.show()
     plt.close()
 
@@ -167,7 +167,7 @@ def combine_mds(*args, **kwargs):
     # uses xy_lim, all_coords
     # print(xy_lim)
     # print(sum([within(coord, xy_lim) for coord in all_coords])/len(all_coords),'retained overall')
-    if silent:
+    if not silent:
         plt.show()
     plt.close()
 
