@@ -1,3 +1,3 @@
-from .mds import *
+from diff_meth_pos import diff_meth_pos, volcano_plot
 
-__all__ = ['combine_mds']
+__all__ = ['diff_meth_pos', 'volcano_plot']

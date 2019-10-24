@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='methylize',
-    version='0.2.0',
+    version='0.9.0',
     description='Analysis software for Illumina methylation arrays',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
@@ -41,8 +41,9 @@ setup(
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
-    entry_points='''
-        [console_scripts]
-        methylize-cli=methylize.cli:app
-    ''',
+    entry_points={
+        'console_scripts': [
+            'methylize = methylize:main',
+        ],
+    },
 )
