@@ -4,6 +4,7 @@ import pandas as pd
 from joblib import Parallel, delayed, cpu_count
 import matplotlib.pyplot as plt
 import matplotlib # color maps
+import datetime
 # app
 from helpers import probe2chr, color_schemes
 
@@ -61,6 +62,15 @@ def diff_meth_pos(
             p-values corrected according to the model's false discovery
             rate (FDR).
             - Default: 1 -- returns all DMPs regardless of significance.
+        export:
+            - default: False
+            - if True or 'csv', saves a csv file with data
+            - if 'pkl', saves a pickle file of the results as a dataframe.
+            - USE q_cutoff to limit what gets saved to only significant results.
+                by default, q_cutoff == 1 and this means everything is saved/reported/exported.
+        filename:
+            - specify a filename for the exported file.
+            By default, if not specified, filename will be `DMP_<number of probes in file>_<number of samples processed>_<current_date>.<pkl|csv>`
         shrink_var:
             - If True, variance shrinkage will be employed and squeeze
             variance using Bayes posterior means. Variance shrinkage
@@ -89,6 +99,7 @@ def diff_meth_pos(
     """
     if kwargs != {}:
         print('Additional parameters:', kwargs)
+    verbose = False if kwargs.get('verbose') == False else True
 
     ##Check that an available regression method has been selected
     regression_options = ["logistic","linear"]
@@ -248,10 +259,17 @@ def diff_meth_pos(
         if probe_stats.shape[0] == 0:
             print("No DMPs were found within the q = %s significance cutoff level specified." %q_cutoff)
 
-    # Return a dataframe of regression statistics with a row for each probe and a column for each statistical measure
+    # Return
+    if kwargs.get('export'):
+        filename = kwargs.get('filename', f"DMP_{len(probe_stats)}_{len(meth_data)}_{str(datetime.date.today())}")
+        if str(kwargs.get('export')).lower() == 'csv' or kwargs.get('export') == True:
+            probe_stats.to_csv(filename+'.csv')
+        if str(kwargs.get('export')).lower() == 'pkl':
+            probe_stats.to_pickle(filename+'.pkl')
+        if verbose == True:
+            print(f"saved {filename}.")
+    # a dataframe of regression statistics with a row for each probe and a column for each statistical measure
     return probe_stats
-
-
 
 def linear_DMP_regression(probe_data,phenotypes):
     """
@@ -373,14 +391,24 @@ def volcano_plot(stats_results, **kwargs):
             Default: 0.05 alpha level
             The significance level that will be used to highlight the most
             significant adjusted p-values (FDR Q-values) on the plot.
-        palette:
-            color pattern for plot
-        `width` -- figure width -- default is 16
-        `height` -- figure height -- default is 8
-        `fontsize` -- figure font size -- default 16
-        `dotsize` -- figure dot size on chart -- default 30
-        `border` -- plot border --  default is OFF
-        `data_type_label` -- (e.g. Beta Values, M Values) -- default is 'Beta'
+        beta_coefficient_cutoff:
+            Default: No cutoff
+            format: a list or tuple with two numbers for (min, max)
+            If specified in kwargs, will limit plot to only values within the range of regression coefficients
+        visualization kwargs:
+            `palette` -- color pattern for plot -- default is [blue, red, grey]
+                other palettes: ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
+            `width` -- figure width -- default is 16
+            `height` -- figure height -- default is 8
+            `fontsize` -- figure font size -- default 16
+            `dotsize` -- figure dot size on chart -- default 30
+            `border` -- plot border --  default is OFF
+            `data_type_label` -- (e.g. Beta Values, M Values) -- default is 'Beta'
+        save:
+            specify that it export an image in `png` format.
+            By default, the function only displays a plot.
+        filename:
+            specify an export filename. default is `volcano_<current_date>.png`.
 
     Returns:
         Displays a plot, but does not directly return an object.
@@ -394,6 +422,7 @@ def volcano_plot(stats_results, **kwargs):
             - significant points with negative correlations (hypomethylated probes)
               appear in blue
     """
+    verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
     if kwargs.get('palette') in color_schemes:
         colors = color_schemes[kwargs.get('palette')]
     else:
@@ -402,13 +431,28 @@ def volcano_plot(stats_results, **kwargs):
     if kwargs.get('palette') and kwargs.get('palette') not in color_schemes:
         print(f"WARNING: user supplied color palette {kwargs.get('palette')} is not a valid option! (Try: {list(color_schemes.keys())})")
     cutoff = 0.05 if not kwargs.get('cutoff') else kwargs.get('cutoff')
-    verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
+    beta_coefficient_cutoff = kwargs.get('beta_coefficient_cutoff')
+    if beta_coefficient_cutoff != None and type(beta_coefficient_cutoff) in (list,tuple) and len(beta_coefficient_cutoff) == 2:
+        pass # OK
+        """
+            if beta_coefficient_cutoff != None and (
+                stats_results.Coefficient[i] < beta_coefficient_cutoff[0] or
+                stats_results.Coefficient[i] > beta_coefficient_cutoff[1]
+                ):
+                continue
+        """
+        pre = len(stats_results)
+        stats_results = stats_results[(beta_coefficient_cutoff[0] < stats_results['Coefficient']) & (stats_results['Coefficient'] < beta_coefficient_cutoff[1])] #|
+        print(f"Excluded {pre-len(stats_results)} probes outside of the specified beta coefficient range: {beta_coefficient_cutoff}")
+    elif beta_coefficient_cutoff != None:
+        print(f'WARNING: Your beta_coefficient_cutoff value ({beta_coefficient_cutoff}) is invalid. Pass a list or tuple with two values for min,max.')
     def_width = int(kwargs.get('width',16))
     def_height = int(kwargs.get('height',8))
     def_fontsize = int(kwargs.get('fontsize',16))
     def_dot_size = int(kwargs.get('dotsize',30))
     border = True if kwargs.get('border') == True else False # default OFF
     data_type_label = kwargs.get('data_type_label','Beta')
+    save = True if kwargs.get('save') else False
 
     palette = []
     for i in range(len(stats_results.FDR_QValue)):
@@ -438,7 +482,15 @@ def volcano_plot(stats_results, **kwargs):
         ax.spines['right'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
-    plt.show()
+    if save:
+        filename = kwargs.get('filename') if kwargs.get('filename') else f"volcano_{len(stats_results)}_{str(datetime.date.today())}.png"
+        plt.savefig(filename)
+        if verbose == True:
+            print(f"saved {filename}")
+    if verbose == True:
+        plt.show()
+    else:
+        plt.close(fig)
 
 
 def manhattan_plot(stats_results, **kwargs):
@@ -464,8 +516,17 @@ def manhattan_plot(stats_results, **kwargs):
         stats_results: a pandas DataFrame containing the stats_results from the linear/logistic regression run on m_values or beta_values
         and a pair of sample phenotypes. The DataFrame must contain A "PValue" column. the default output of diff_meth_pos() will work.
 
-    kwargs
-    ======
+    output kwargs
+    =============
+        save:
+            specify that it export an image in `png` format.
+            By default, the function only displays a plot.
+        filename:
+            specify an export filename. default is `volcano_<current_date>.png`.
+
+
+    visualization kwargs
+    ====================
         `verbose` (True/False) - default is True, verbose messages, if omitted.
         `width` -- figure width -- default is 16
         `height` -- figure height -- default is 8
@@ -473,16 +534,17 @@ def manhattan_plot(stats_results, **kwargs):
         `border` -- plot border --  default is OFF
         `palette` -- specify one of a dozen options for colors of chromosome regions on plot:
         ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3',
-        'tab10', 'tab20', 'tab20b', 'tab20c']
+        'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
         `cutoff` -- threshold p-value for where to draw a line on the plot (default: 5x10^-8 on plot, or p<=0.05)
-            specify a number, such as 0.00000005.
+            specify a number, such as 0.05.
     """
     verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
     def_width = int(kwargs.get('width',16))
     def_height = int(kwargs.get('height',8))
-    def_fontsize = int(kwargs.get('fontsize',16))
+    def_fontsize = int(kwargs.get('fontsize',12))
     # def_dot_size = int(kwargs.get('dotsize',16)) -- df.groupby.plots don't accept this.
     border = True if kwargs.get('border') == True else False # default OFF
+    save = True if kwargs.get('save') else False
     if kwargs.get('palette') in color_schemes:
         colors = color_schemes[kwargs.get('palette')]
     else:
@@ -492,7 +554,7 @@ def manhattan_plot(stats_results, **kwargs):
     if kwargs.get('cutoff'):
         pvalue_cutoff_y = -np.log10(float(kwargs.get('cutoff')))
     else:
-        pvalue_cutoff_y = 0.7 #-np.log10(0.0005)
+        pvalue_cutoff_y = -np.log10(0.05)
 
     df = stats_results
 
@@ -519,7 +581,8 @@ def manhattan_plot(stats_results, **kwargs):
     df_grouped = df.groupby(('chromosome'))
     print('Total probes to plot:', len(df['ind']))
     # make the figure. set defaults first.
-    plt.rc({'family': 'sans-serif', 'size': def_fontsize})
+    #plt.rc({'family': 'sans-serif', 'size': def_fontsize}) -- this gets overridden by volcano settings in notebook.
+    plt.rcParams.update({'font.family':'sans-serif', 'font.size': def_fontsize})
     fig = plt.figure(figsize=(def_width,def_height))
     ax = fig.add_subplot(111)
     colors = list(colors.colors)
@@ -544,7 +607,7 @@ def manhattan_plot(stats_results, **kwargs):
     ax.set_xticks(x_labels_pos)
     ax.set_xticklabels(x_labels)
     ax.set_xlim([0, len(df)])
-    ax.set_ylim([0, max(df['minuslog10pvalue']) + 0.5])
+    ax.set_ylim([0, max(df['minuslog10pvalue']) + 0.2 * max(df['minuslog10pvalue'])])
     ax.set_xlabel('Chromosome')
     ax.set_ylabel('-log(p-value)')
     # hide the border; unnecessary
@@ -555,29 +618,37 @@ def manhattan_plot(stats_results, **kwargs):
         ax.spines['left'].set_visible(False)
     for tick in ax.get_xticklabels():
         tick.set_rotation(45)
-    plt.show()
+    if save:
+        filename = kwargs.get('filename') if kwargs.get('filename') else f"manhattan_{len(stats_results)}_{str(datetime.date.today())}.png"
+        plt.savefig(filename)
+        if verbose == True:
+            print(f"saved {filename}")
+    if verbose == True:
+        plt.show()
+    else:
+        plt.close(fig)
 
 
-def to_csv(stats_results, filename):
-    """
-    This function writes the pandas DataFrame output of detect_DMPs to a CSV file
-    named by the user. The DataFrame has a row for every successfully tested probe
-    and columns with different regression statistics as follows:
-            - regression coefficient
-            - lower limit of the coefficient's 95% confidence interval
-            - upper limit of the coefficient's 95% confidence interval
-            - standard error
-            - p-value
-            - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
+"""
+stats_results.to_csv(filename)
 
-    Inputs and Parameters
-    ---------------------------------------------------------------------------
-        stats_results: A pandas DataFrame output by the function detect_DMPs.
-        filename: A string that will be used to name the resulting .CSV file.
+This function writes the pandas DataFrame output of detect_DMPs to a CSV file
+named by the user. The DataFrame has a row for every successfully tested probe
+and columns with different regression statistics as follows:
+        - regression coefficient
+        - lower limit of the coefficient's 95% confidence interval
+        - upper limit of the coefficient's 95% confidence interval
+        - standard error
+        - p-value
+        - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
 
-    Returns:
-        Writes a CSV file, but does not directly return an object.
-        The CSV will include the DataFrame column names as headers and the index
-        of the DataFrame as row names for each probe.
-    """
-    stats_results.to_csv(filename)
+Inputs and Parameters
+---------------------------------------------------------------------------
+    stats_results: A pandas DataFrame output by the function detect_DMPs.
+    filename: A string that will be used to name the resulting .CSV file.
+
+Returns:
+    Writes a CSV file, but does not directly return an object.
+    The CSV will include the DataFrame column names as headers and the index
+    of the DataFrame as row names for each probe.
+"""
