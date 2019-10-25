@@ -1,3 +1,38 @@
+import matplotlib.pyplot as plt
+import matplotlib # color maps
+
+probe2chr = None
+def load_probe_chr_map():
+    """ runs inside manhattan plot, and only needed there, but useful to load once if function called multiple times """
+    global probe2chr
+    if probe2chr != None:
+        return
+    # maps probes to chromosomes for all known probes in major array types.
+    import pickle
+    from pathlib import Path
+    with open(Path('../data/probe2chr.pkl'),'rb') as f:
+        probe2chr = pickle.load(f)
+    # sort order on chart requires this hackiness below
+    probe2chr = {k:f"CH-0{v}" if v not in ('X','Y') and type(v) is str and int(v) < 10 else f"CH-{v}" for k,v in probe2chr.items()}
+load_probe_chr_map()
+
+color_schemes = {}
+def load_color_schemes():
+    global color_schemes
+    if color_schemes != {}:
+        return
+    color_schemes = {cmap: matplotlib.cm.get_cmap(cmap) for cmap in
+        ['Pastel1', 'Pastel2', 'Paired', 'Accent',
+        'Dark2', 'Set1', 'Set2', 'Set3',
+        'tab10', 'tab20', 'tab20b', 'tab20c']
+    }
+    color_schemes['Gray'] = matplotlib.colors.ListedColormap(['whitesmoke','lightgray','silver','darkgray','gray','dimgray','black'])
+    color_schemes['Gray2'] = matplotlib.colors.ListedColormap(['silver','gray'])
+    color_schemes['Gray3'] = matplotlib.colors.ListedColormap(['darkgrey','black'])
+    color_schemes['Volcano'] = matplotlib.colors.ListedColormap(['tab:red','tab:blue','silver'])
+    color_schemes['default'] = matplotlib.colors.ListedColormap(['mistyrose', 'navajowhite', 'palegoldenrod', 'yellowgreen', 'mediumseagreen', 'powderblue', 'skyblue',  'lavender', 'plum', 'palevioletred'])
+load_color_schemes()
+
 
 def map_to_genome(df, rgset):
     """Maps dataframe to genome locations

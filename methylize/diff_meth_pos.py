@@ -3,6 +3,9 @@ import numpy as np
 import pandas as pd
 from joblib import Parallel, delayed, cpu_count
 import matplotlib.pyplot as plt
+import matplotlib # color maps
+# app
+from helpers import probe2chr, color_schemes
 
 def is_interactive():
     """ determine if script is being run within a jupyter notebook or as a script """
@@ -14,19 +17,6 @@ if is_interactive():
 else:
     from tqdm import tqdm
 
-probe2chr = None
-def load_probe_chr_map():
-    """ runs inside manhattan plot, and only needed there, but useful to load once if function called multiple times """
-    global probe2chr
-    if probe2chr != None:
-        return
-    # maps probes to chromosomes for all known probes in major array types.
-    import pickle
-    from pathlib import Path
-    with open(Path('../data/probe2chr.pkl'),'rb') as f:
-        probe2chr = pickle.load(f)
-    # sort order on chart requires this hackiness below
-    probe2chr = {k:f"CH-0{v}" if v not in ('X','Y') and type(v) is str and int(v) < 10 else f"CH-{v}" for k,v in probe2chr.items()}
 
 def diff_meth_pos(
     meth_data,
@@ -45,32 +35,37 @@ def diff_meth_pos(
 
     Inputs and Parameters
     ---------------------------------------------------------------------------
-        meth_data: (CURRENTLY) A pandas dataframe of methylation M-values for
-                  where each column corresponds to a CpG site probe and each
-                  row corresponds to a sample.
-        pheno_data: A list or one dimensional numpy array of phenotypes
-                   for each sample column of meth_data.
-                   - Binary phenotypes can be presented as a list/array
-                     of zeroes and ones or as a list/array of strings made up
-                     of two unique words (i.e. "control" and "cancer"). The first
-                     string in phenoData will be converted to zeroes, and the
-                     second string encountered will be convered to ones for the
-                     logistic regression analysis.
-        regression_method: Either the string "logistic" or the string "linear"
-                           depending on the phenotype data available. (Default:
-                           "linear") Phenotypes with only two options
-                           (e.g. "control" and "cancer") should be analyzed
-                           with a logistic regression, whereas continuous numeric
-                           phenotypes are required to run the linear regression analysis.
-        q_cutoff: Select a cutoff value to return only those DMPs that meet a
-                 particular significance threshold. Reported q-values are
-                 p-values corrected according to the model's false discovery
-                 rate (FDR). Default = 1 to return all DMPs regardless of
-                 significance.
-        shrink_var: If True, variance shrinkage will be employed and squeeze
-                   variance using Bayes posterior means. Variance shrinkage
-                   is recommended when analyzing small datasets (n < 10).
-                   (NOT IMPLEMENTED YET)
+        meth_data:
+            A pandas dataframe of methylation M-values for
+            where each column corresponds to a CpG site probe and each
+            row corresponds to a sample.
+        pheno_data:
+            A list or one dimensional numpy array of phenotypes
+            for each sample row in meth_data.
+            - Binary phenotypes can be presented as a list/array
+            of zeroes and ones or as a list/array of strings made up
+            of two unique words (i.e. "control" and "cancer"). The first
+            string in phenoData will be converted to zeroes, and the
+            second string encountered will be convered to ones for the
+            logistic regression analysis.
+            - Use numbers for phenotypes if running linear regression.
+        regression_method: (logistic | linear)
+            - Either the string "logistic" or the string "linear"
+            depending on the phenotype data available.
+            - Default: "linear"
+            - Phenotypes with only two options (e.g. "control" and "cancer") can be analyzed with a logistic regression
+            - Continuous numeric phenotypes (e.g. age) are required to run a linear regression analysis.
+        q_cutoff:
+            - Select a cutoff value to return only those DMPs that meet a
+            particular significance threshold. Reported q-values are
+            p-values corrected according to the model's false discovery
+            rate (FDR).
+            - Default: 1 -- returns all DMPs regardless of significance.
+        shrink_var:
+            - If True, variance shrinkage will be employed and squeeze
+            variance using Bayes posterior means. Variance shrinkage
+            is recommended when analyzing small datasets (n < 10).
+            (NOT IMPLEMENTED YET)
 
     Returns:
         A pandas dataframe of regression statistics with a row for each probe analyzed
@@ -358,7 +353,7 @@ def logistic_DMP_regression(probe_data,phenotypes):
     return probe_stats_row
 
 
-def volcano_plot(stats_results,cutoff=0.05):
+def volcano_plot(stats_results, **kwargs):
     """
     This function writes the pandas DataFrame output of detect_DMPs to a CSV file
     named by the user. The DataFrame has a row for every successfully tested probe
@@ -372,10 +367,20 @@ def volcano_plot(stats_results,cutoff=0.05):
 
     Inputs and Parameters
     ---------------------------------------------------------------------------
-        stats_results: A pandas DataFrame output by the function detect_DMPs.
-        cutoff: The significance level that will be used to highlight the most
-                significant adjusted p-values (FDR Q-values) on the plot.
-                (default = 0.05 alpha level)
+        stats_results (required):
+            A pandas DataFrame output by the function detect_DMPs.
+        cutoff:
+            Default: 0.05 alpha level
+            The significance level that will be used to highlight the most
+            significant adjusted p-values (FDR Q-values) on the plot.
+        palette:
+            color pattern for plot
+        `width` -- figure width -- default is 16
+        `height` -- figure height -- default is 8
+        `fontsize` -- figure font size -- default 16
+        `dotsize` -- figure dot size on chart -- default 30
+        `border` -- plot border --  default is OFF
+        `data_type_label` -- (e.g. Beta Values, M Values) -- default is 'Beta'
 
     Returns:
         Displays a plot, but does not directly return an object.
@@ -389,19 +394,50 @@ def volcano_plot(stats_results,cutoff=0.05):
             - significant points with negative correlations (hypomethylated probes)
               appear in blue
     """
-    colors = []
+    if kwargs.get('palette') in color_schemes:
+        colors = color_schemes[kwargs.get('palette')]
+    else:
+        colors = color_schemes['Volcano']
+    colors = list(colors.colors)
+    if kwargs.get('palette') and kwargs.get('palette') not in color_schemes:
+        print(f"WARNING: user supplied color palette {kwargs.get('palette')} is not a valid option! (Try: {list(color_schemes.keys())})")
+    cutoff = 0.05 if not kwargs.get('cutoff') else kwargs.get('cutoff')
+    verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
+    def_width = int(kwargs.get('width',16))
+    def_height = int(kwargs.get('height',8))
+    def_fontsize = int(kwargs.get('fontsize',16))
+    def_dot_size = int(kwargs.get('dotsize',30))
+    border = True if kwargs.get('border') == True else False # default OFF
+    data_type_label = kwargs.get('data_type_label','Beta')
+
+    palette = []
     for i in range(len(stats_results.FDR_QValue)):
         if stats_results.FDR_QValue[i] < cutoff:
             if stats_results.Coefficient[i] > 0:
-                colors.append("red")
+                palette.append(colors[0])
             else:
-                colors.append("blue")
+                palette.append(colors[1])
         else:
-            colors.append("silver")
-    plt.scatter(stats_results.Coefficient,-np.log10(stats_results.FDR_QValue),c=colors)
-    plt.ylabel("-log10 (FDR Adjusted Q Value)")
-    plt.xlabel("Beta")
-    plt.axhline(y=-np.log10(cutoff), color="gray", linestyle='--')
+            palette.append(colors[2])
+    plt.rcParams.update({'font.family':'sans-serif', 'font.size': def_fontsize})
+    fig = plt.figure(figsize=(def_width,def_height))
+    ax = fig.add_axes([0, 0, 1, 1])
+    plt.scatter(stats_results.Coefficient,
+        -np.log10(stats_results.FDR_QValue),
+        c=palette ,
+        s=def_dot_size)
+    #plt.ylabel("-log10 (FDR Adjusted Q Value)")
+    ax.set_ylabel("-log10 (FDR Adjusted Q Value)")
+    #plt.xlabel(data_type_label)
+    ax.set_xlabel(data_type_label)
+    #plt.axhline(y=-np.log10(cutoff), color="grey", linestyle='--')
+    ax.axhline(y=-np.log10(cutoff), color="grey", linestyle='--')
+    # hide the border; unnecessary
+    if border == False:
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
     plt.show()
 
 
@@ -431,27 +467,34 @@ def manhattan_plot(stats_results, **kwargs):
     kwargs
     ======
         `verbose` (True/False) - default is True, verbose messages, if omitted.
-        `test` (True/False) - default is False; dummy data / debugging mode.
         `width` -- figure width -- default is 16
         `height` -- figure height -- default is 8
+        `fontsize` -- figure font size -- default 16
+        `border` -- plot border --  default is OFF
+        `palette` -- specify one of a dozen options for colors of chromosome regions on plot:
+        ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3',
+        'tab10', 'tab20', 'tab20b', 'tab20c']
+        `cutoff` -- threshold p-value for where to draw a line on the plot (default: 5x10^-8 on plot, or p<=0.05)
+            specify a number, such as 0.00000005.
     """
     verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
     def_width = int(kwargs.get('width',16))
     def_height = int(kwargs.get('height',8))
-    # testing with randomly generated data
-    """
-    if 'test' in kwargs:
-        from scipy.stats import uniform, randint
-        df = pd.DataFrame(
-            {'probe_location' : ['cp%i' % i for i in np.arange(10000)],
-            'PValue' : uniform.rvs(size=10000),
-            'CHR' : ['CH-%i' % i for i in randint.rvs(0,22,size=10000)]
-            })
+    def_fontsize = int(kwargs.get('fontsize',16))
+    # def_dot_size = int(kwargs.get('dotsize',16)) -- df.groupby.plots don't accept this.
+    border = True if kwargs.get('border') == True else False # default OFF
+    if kwargs.get('palette') in color_schemes:
+        colors = color_schemes[kwargs.get('palette')]
     else:
-    """
-    df = stats_results
+        colors = color_schemes['default']
+    if kwargs.get('palette') and kwargs.get('palette') not in color_schemes:
+        print(f"WARNING: user supplied color palette {kwargs.get('palette')} is not a valid option! (Try: {list(color_schemes.keys())})")
+    if kwargs.get('cutoff'):
+        pvalue_cutoff_y = -np.log10(float(kwargs.get('cutoff')))
+    else:
+        pvalue_cutoff_y = 0.7 #-np.log10(0.0005)
 
-    load_probe_chr_map()
+    df = stats_results
 
     # get -log_10(PValue)
     df['minuslog10pvalue'] = -np.log10(df.PValue)
@@ -476,14 +519,14 @@ def manhattan_plot(stats_results, **kwargs):
     df_grouped = df.groupby(('chromosome'))
     print('Total probes to plot:', len(df['ind']))
     # make the figure. set defaults first.
-    plt.rc({'family': 'normal', 'size':16})
+    plt.rc({'family': 'sans-serif', 'size': def_fontsize})
     fig = plt.figure(figsize=(def_width,def_height))
     ax = fig.add_subplot(111)
-    colors = ['red', 'orange', 'yellow', 'green', 'blue', 'purple']
+    colors = list(colors.colors)
     x_labels = []
     x_labels_pos = []
+    print(" | ".join([f"{name} {len(group)}" for name,group in df_grouped]))
     for num, (name, group) in enumerate(df_grouped):
-        print( num, name, len(group))
         try:
             repeat_color = colors[num % len(colors)]
             group.plot(kind='scatter', x='ind', y='minuslog10pvalue', color=repeat_color, ax=ax)
@@ -491,11 +534,25 @@ def manhattan_plot(stats_results, **kwargs):
             x_labels_pos.append((group['ind'].iloc[-1] - (group['ind'].iloc[-1] - group['ind'].iloc[0])/2))
         except ValueError as e:
             print(e)
+    # draw the p-value cutoff line
+    xy_line = {'x':list(range(len(stats_results))), 'y': [pvalue_cutoff_y for i in range(len(stats_results))]}
+    #ax.plot(xy_line, 'k--', linewidth=5)
+    df_line = pd.DataFrame(xy_line)
+    df_line.plot(kind='line', x='x', y='y', color='grey', ax=ax, legend=False, style='--')
+    if kwargs.get('cutoff'):
+        print(f"p-value line: {pvalue_cutoff_y}")
     ax.set_xticks(x_labels_pos)
     ax.set_xticklabels(x_labels)
     ax.set_xlim([0, len(df)])
     ax.set_ylim([0, max(df['minuslog10pvalue']) + 0.5])
     ax.set_xlabel('Chromosome')
+    ax.set_ylabel('-log(p-value)')
+    # hide the border; unnecessary
+    if border == False:
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+        ax.spines['bottom'].set_visible(False)
+        ax.spines['left'].set_visible(False)
     for tick in ax.get_xticklabels():
         tick.set_rotation(45)
     plt.show()
