@@ -6,7 +6,11 @@ View on [ReadTheDocs.](https://life-epigenetics-methylize.readthedocs-hosted.com
 
 ## Methylize Package
 
-The `methylize` package contains both high-level APIs for processing data from local files and low-level functionality allowing you to analyze your data AFTER running `methpype` and `methQC`.
+The `methylize` package contains both high-level APIs for processing data from local files and low-level functionality allowing you to analyze your data AFTER running `methylprep` and `methylcheck`. For greatest usability, import `methylize` into a Jupyer Notebook along with your processed sample data (a DataFrame of beta values or m-values and a separate DataFrame containing meta data about the samples).
+
+`Methylize` allows you to run linear or logistic regression on all probes and identify points of interest in the methylome where DNA is differentially modified. Then you can use these regression results to create *volcano plots* and *manhattan plots*.
+
+![Manhattan Plot](docs/manhattan_example.png) ![Volcano Plot](docs/volcano_example.png)
 
 ## Installation
 
@@ -16,7 +20,7 @@ pip install methylize
 
 ## differentially methylated position/probe (DMP) detection
 
-The `detect_DMPs()` function searches for individual differentially methylated positions/probes
+The `diff_meth_pos()` function searches for individual differentially methylated positions/probes
 (DMPs) by regressing the methylation M-value for each sample at a given
 genomic location against the phenotype data for those samples.
 
@@ -26,45 +30,80 @@ Phenotypes can be provided as
   - numeric continuous data
   - (TODO: use the methylprep generated meta-data dataframe as input)
 
-Inputs and Parameters
----------------------
+The function will coerge string labels for phenotype into 0s and 1s when running logistic regression.
+Only 2 phenotypes are allowed with logistic regression. Linear regression can take more than two phenotypes.
+
+### Inputs and Parameters
+-------------------------
 
     meth_data:
-        (CURRENTLY) A numpy array of methylation M-values or beta-values
-        where each column corresponds to a CpG site probe and each row corresponds to a sample.
+        A pandas dataframe of methylation M-values for
+        where each column corresponds to a CpG site probe and each
+        row corresponds to a sample.
     pheno_data:
         A list or one dimensional numpy array of phenotypes
-        for each sample column of meth_data.
+        for each sample row in meth_data.
         - Binary phenotypes can be presented as a list/array
-            of zeroes and ones or as a list/array of strings made up
-            of two unique words (i.e. "control" and "cancer"). The first
-            string in phenoData will be converted to zeroes, and the
-            second string encountered will be converted to ones for the
-            logistic regression analysis.
-    regression_method:
-        Either the string "logistic" or the string "linear"
-        depending on the phenotype data available. (Default:
-        "linear") Phenotypes with only two options
-        (e.g. "control" and "cancer") should be analyzed
-        with a logistic regression, whereas continuous numeric
-        phenotypes are required to run the linear regression analysis.
+        of zeroes and ones or as a list/array of strings made up
+        of two unique words (i.e. "control" and "cancer"). The first
+        string in phenoData will be converted to zeroes, and the
+        second string encountered will be convered to ones for the
+        logistic regression analysis.
+        - Use numbers for phenotypes if running linear regression.
+    regression_method: (logistic | linear)
+        - Either the string "logistic" or the string "linear"
+        depending on the phenotype data available.
+        - Default: "linear"
+        - Phenotypes with only two options (e.g. "control" and "cancer") can be analyzed with a logistic regression
+        - Continuous numeric phenotypes (e.g. age) are required to run a linear regression analysis.
     q_cutoff:
-        Select a cutoff value to return only those DMPs that meet a
+        - Select a cutoff value to return only those DMPs that meet a
         particular significance threshold. Reported q-values are
         p-values corrected according to the model's false discovery
-        rate (FDR). Default = 1 to return all DMPs regardless of
-        significance.
+        rate (FDR).
+        - Default: 1 -- returns all DMPs regardless of significance.
+    export:
+        - default: False
+        - if True or 'csv', saves a csv file with data
+        - if 'pkl', saves a pickle file of the results as a dataframe.
+        - USE q_cutoff to limit what gets saved to only significant results.
+            by default, q_cutoff == 1 and this means everything is saved/reported/exported.
+    filename:
+        - specify a filename for the exported file.
+        By default, if not specified, filename will be `DMP_<number of probes in file>_<number of samples processed>_<current_date>.<pkl|csv>`
     shrink_var:
-        (NOT IMPLEMENTED YET)
-        If True, variance shrinkage will be employed and squeeze
+        - If True, variance shrinkage will be employed and squeeze
         variance using Bayes posterior means. Variance shrinkage
         is recommended when analyzing small datasets (n < 10).
+        (NOT IMPLEMENTED YET)
+
+### Returns
+-----------
+
+    A pandas dataframe of regression statistics with a row for each probe analyzed
+    and columns listing the individual probe's regression statistics of:
+        - regression coefficient
+        - lower limit of the coefficient's 95% confidence interval
+        - upper limit of the coefficient's 95% confidence interval
+        - standard error
+        - p-value (phenotype group A vs B - likelihood that the difference is significant for this probe/location)
+        - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
+        - FDR_QValue: p value, adjusted for multiple comparisons
+
+    The rows are sorted by q-value in ascending order to list the most significant
+    probes first. If q_cutoff is specified, only probes with significant q-values
+    less than the cutoff will be returned in the dataframe.
+
+If Progress Bar Missing:
+    if you don't see a progress bar in your jupyterlab notebook, try this:
+    - conda install -c conda-forge nodejs
+    - jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 ## About BumpHunter
 
 This includes a Jupyter Notebook running `bumphunter` (from R) with variations in parameters to see how sensitive the DMPs found are to different settings like cutoff percentile values, maximum cluster size, preprocessing method, and using Beta vs M-value as the methylation measure in the model.
 
-This function performs the bumphunting approach described by Jaffe et al. International Journal of Epidemiology (2012). The main output is a table of candidate regions with permutation or bootstrap-based family-wide error rates (FWER) and p-values assigned.
+This function performs the bumphunting approach described by ``Jaffe et al. International Journal of Epidemiology (2012)``. The main output is a table of candidate regions with permutation or bootstrap-based family-wide error rates (FWER) and p-values assigned.
 
 The general idea is that for each genomic location we have a value for several individuals. We also have covariates for each individual and perform regression. This gives us one estimate of the coefficient of interest (a common example is case versus control). These estimates are then (optionally) smoothed. The smoothing occurs in clusters of locations that are ‘close enough’. This gives us an estimate of a genomic profile that is 0 when uninteresting. We then take values above (in absolute value) cutoff as candidate regions. Permutations can then performed to create null distributions for the candidate regions.
 
