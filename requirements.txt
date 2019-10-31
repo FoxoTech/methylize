@@ -5,7 +5,7 @@ matplotlib
 statsmodels
 pytest
 coverage
-coveralls-python
+# coveralls-python
 sphinx>=1.4
 sphinxcontrib-apidoc
 m2r
