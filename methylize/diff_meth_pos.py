@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import matplotlib # color maps
 import datetime
 # app
-from helpers import probe2chr, color_schemes
+from .helpers import probe2chr, color_schemes
 
 def is_interactive():
     """ determine if script is being run within a jupyter notebook or as a script """

@@ -11,7 +11,7 @@ def load_probe_chr_map(full=False):
     # maps probes to chromosomes for all known probes in major array types.
     import pickle
     from pathlib import Path
-    with open(Path('../data/probe2chr.pkl'),'rb') as f:
+    with open(Path('data/probe2chr.pkl'),'rb') as f:
         probe2map = pickle.load(f)
         # structure is dataframe with 'CGidentifier, CHR, MAPINFO' columns -- bumphunter uses MAPINFO (chromosome position of probes)
     # dict for volcano plots, with a sortable order for chart
