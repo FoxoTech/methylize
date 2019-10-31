@@ -2,7 +2,8 @@ import matplotlib.pyplot as plt
 import matplotlib # color maps
 
 probe2chr = None
-def load_probe_chr_map():
+probe2map = None
+def load_probe_chr_map(full=False):
     """ runs inside manhattan plot, and only needed there, but useful to load once if function called multiple times """
     global probe2chr
     if probe2chr != None:
@@ -11,9 +12,12 @@ def load_probe_chr_map():
     import pickle
     from pathlib import Path
     with open(Path('../data/probe2chr.pkl'),'rb') as f:
-        probe2chr = pickle.load(f)
-    # sort order on chart requires this hackiness below
-    probe2chr = {k:f"CH-0{v}" if v not in ('X','Y') and type(v) is str and int(v) < 10 else f"CH-{v}" for k,v in probe2chr.items()}
+        probe2map = pickle.load(f)
+        # structure is dataframe with 'CGidentifier, CHR, MAPINFO' columns -- bumphunter uses MAPINFO (chromosome position of probes)
+    # dict for volcano plots, with a sortable order for chart
+    probes = probe2map[['CGidentifier','CHR']].to_dict('records')
+    probe2chr = {probe['CGidentifier']:f"CH-0{probe['CHR']}" if probe['CHR'] not in ('X','Y') and type(probe['CHR']) is str and int(probe['CHR']) < 10 else f"CH-{probe['CHR']}" for probe in probes}
+    #OLD probe2chr = {k:f"CH-0{v}" if v not in ('X','Y') and type(v) is str and int(v) < 10 else f"CH-{v}" for k,v in probes.items()}
 load_probe_chr_map()
 
 color_schemes = {}

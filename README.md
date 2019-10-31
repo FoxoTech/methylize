@@ -10,7 +10,14 @@ The `methylize` package contains both high-level APIs for processing data from l
 
 `Methylize` allows you to run linear or logistic regression on all probes and identify points of interest in the methylome where DNA is differentially modified. Then you can use these regression results to create *volcano plots* and *manhattan plots*.
 
-![Manhattan Plot](docs/manhattan_example.png) ![Volcano Plot](docs/volcano_example.png)
+### Sample Manhattan Plot
+![Manhattan Plot](docs/manhattan_example.png)
+
+### Sample Volcano Plot
+![Volcano Plot](docs/volcano_example.png)
+
+Customizable: Plot size, color palette, and cutoff p-value lines can be set by the user.
+Exporting: You can export all probe statistics, or just the significant probes as CSV or python pickled DataFrame.
 
 ## Installation
 
