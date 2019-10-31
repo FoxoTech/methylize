@@ -1,10 +1,12 @@
 numpy
 scipy
 pandas
+matplotlib
 statsmodels
 pytest
 coverage
 coveralls-python
+sphinx>=1.4
 sphinxcontrib-apidoc
 m2r
 nbsphinx
