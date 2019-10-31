@@ -1,8 +1,10 @@
-`methylize` is a python package for analyzing output from Illumina methylation arrays.
-View on [ReadTheDocs.](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/)
+`methylize` is a python package for analyzing output from Illumina methylation arrays. It complements `methylprep` and `methylcheck`. View on [ReadTheDocs.](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/)
 
 [![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylize/badge/?version=latest)](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv)  [![CircleCI](https://circleci.com/gh/LifeEGX/methylize.svg?style=shield&circle-token=6a80b317c9e581e0969cdc73cc3233b3c70b9dbd)](https://circleci.com/gh/LifeEGX/methylize)  [![Codacy Badge](https://api.codacy.com/project/badge/Grade/36c282629145444facdd2d96b4462afa)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=LifeEGX/methylize&amp;utm_campaign=Badge_Grade)
 [![Coverage Status](https://coveralls.io/repos/github/LifeEGX/methylize/badge.svg?t=uf7qX4)](https://coveralls.io/github/LifeEGX/methylize)
+
+1. [Overview](README.md)
+2. [Demonstrating differentially methylated probe (DMP) detection (volcano plot) and mapping to chrosomes (manhattan plot)](docs/demo_diff_meth_pos.ipynb)
 
 ## Methylize Package
 
@@ -12,6 +14,8 @@ The `methylize` package contains both high-level APIs for processing data from l
 
 ### Sample Manhattan Plot
 ![Manhattan Plot](docs/manhattan_example.png)
+
+![Manhattan Plot (alternate coloring)](docs/manhattan_example2.png)
 
 ### Sample Volcano Plot
 ![Volcano Plot](docs/volcano_example.png)
