@@ -13,8 +13,7 @@ Getting Started
    :caption: Contents:
 
   docs/demo_diff_meth_pos.ipynb
-  docs/bumphunter.md
-  docs/source/modules
+  docs/bumphunter
   docs/source/methylize
 
 Indices and tables
