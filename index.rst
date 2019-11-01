@@ -14,7 +14,7 @@ Getting Started
 
   docs/demo_diff_meth_pos.ipynb
   docs/bumphunter
-  docs/source/methylize
+  docs/source/modules.rst
 
 Indices and tables
 ==================

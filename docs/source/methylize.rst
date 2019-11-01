@@ -1,8 +1,8 @@
 methylize package
-===================
+=================
 
 methylize.diff_meth_pos module
-----------------------
+------------------------------
 
 .. automodule:: methylize.diff_meth_pos
    :members:
@@ -10,7 +10,7 @@ methylize.diff_meth_pos module
    :show-inheritance:
 
 methylize.helpers module
---------------------------
+------------------------
 
 .. automodule:: methylize.helpers
    :members:
