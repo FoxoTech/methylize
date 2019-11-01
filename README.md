@@ -90,7 +90,6 @@ Only 2 phenotypes are allowed with logistic regression. Linear regression can ta
         (NOT IMPLEMENTED YET)
 
 ### Returns
------------
 
     A pandas dataframe of regression statistics with a row for each probe analyzed
     and columns listing the individual probe's regression statistics of:
@@ -110,5 +109,3 @@ If Progress Bar Missing:
     if you don't see a progress bar in your jupyterlab notebook, try this:
     - conda install -c conda-forge nodejs
     - jupyter labextension install @jupyter-widgets/jupyterlab-manager
-
-

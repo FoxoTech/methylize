@@ -27,75 +27,78 @@ def diff_meth_pos(
     shrink_var=False,
     **kwargs):
     """
-    This function searches for individual differentially methylated positions/probes
-    (DMPs) by regressing the methylation M-value for each sample at a given
-    genomic location against the phenotype data for those samples.
+This function searches for individual differentially methylated positions/probes
+(DMPs) by regressing the methylation M-value for each sample at a given
+genomic location against the phenotype data for those samples.
 
-    Phenotypes can be provided as a list of string-based or integer binary data
-    or as numeric continuous data.
+Phenotypes can be provided as a list of string-based or integer binary data
+or as numeric continuous data.
 
-    Inputs and Parameters
-    ---------------------------------------------------------------------------
-        meth_data:
-            A pandas dataframe of methylation M-values for
-            where each column corresponds to a CpG site probe and each
-            row corresponds to a sample.
-        pheno_data:
-            A list or one dimensional numpy array of phenotypes
-            for each sample row in meth_data.
-            - Binary phenotypes can be presented as a list/array
-            of zeroes and ones or as a list/array of strings made up
-            of two unique words (i.e. "control" and "cancer"). The first
-            string in phenoData will be converted to zeroes, and the
-            second string encountered will be convered to ones for the
-            logistic regression analysis.
-            - Use numbers for phenotypes if running linear regression.
-        regression_method: (logistic | linear)
-            - Either the string "logistic" or the string "linear"
-            depending on the phenotype data available.
-            - Default: "linear"
-            - Phenotypes with only two options (e.g. "control" and "cancer") can be analyzed with a logistic regression
-            - Continuous numeric phenotypes (e.g. age) are required to run a linear regression analysis.
-        q_cutoff:
-            - Select a cutoff value to return only those DMPs that meet a
-            particular significance threshold. Reported q-values are
-            p-values corrected according to the model's false discovery
-            rate (FDR).
-            - Default: 1 -- returns all DMPs regardless of significance.
-        export:
-            - default: False
-            - if True or 'csv', saves a csv file with data
-            - if 'pkl', saves a pickle file of the results as a dataframe.
-            - USE q_cutoff to limit what gets saved to only significant results.
-                by default, q_cutoff == 1 and this means everything is saved/reported/exported.
-        filename:
-            - specify a filename for the exported file.
-            By default, if not specified, filename will be `DMP_<number of probes in file>_<number of samples processed>_<current_date>.<pkl|csv>`
-        shrink_var:
-            - If True, variance shrinkage will be employed and squeeze
-            variance using Bayes posterior means. Variance shrinkage
-            is recommended when analyzing small datasets (n < 10).
-            (NOT IMPLEMENTED YET)
+Inputs and Parameters
+---------------------
 
-    Returns:
-        A pandas dataframe of regression statistics with a row for each probe analyzed
-        and columns listing the individual probe's regression statistics of:
-            - regression coefficient
-            - lower limit of the coefficient's 95% confidence interval
-            - upper limit of the coefficient's 95% confidence interval
-            - standard error
-            - p-value (phenotype group A vs B - likelihood that the difference is significant for this probe/location)
-            - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
-            - FDR_QValue: p value, adjusted for multiple comparisons
+    meth_data:
+        A pandas dataframe of methylation M-values for
+        where each column corresponds to a CpG site probe and each
+        row corresponds to a sample.
+    pheno_data:
+        A list or one dimensional numpy array of phenotypes
+        for each sample row in meth_data.
+        - Binary phenotypes can be presented as a list/array
+        of zeroes and ones or as a list/array of strings made up
+        of two unique words (i.e. "control" and "cancer"). The first
+        string in phenoData will be converted to zeroes, and the
+        second string encountered will be convered to ones for the
+        logistic regression analysis.
+        - Use numbers for phenotypes if running linear regression.
+    regression_method: (logistic | linear)
+        - Either the string "logistic" or the string "linear"
+        depending on the phenotype data available.
+        - Default: "linear"
+        - Phenotypes with only two options (e.g. "control" and "cancer") can be analyzed with a logistic regression
+        - Continuous numeric phenotypes (e.g. age) are required to run a linear regression analysis.
+    q_cutoff:
+        - Select a cutoff value to return only those DMPs that meet a
+        particular significance threshold. Reported q-values are
+        p-values corrected according to the model's false discovery
+        rate (FDR).
+        - Default: 1 -- returns all DMPs regardless of significance.
+    export:
+        - default: False
+        - if True or 'csv', saves a csv file with data
+        - if 'pkl', saves a pickle file of the results as a dataframe.
+        - USE q_cutoff to limit what gets saved to only significant results.
+            by default, q_cutoff == 1 and this means everything is saved/reported/exported.
+    filename:
+        - specify a filename for the exported file.
+        By default, if not specified, filename will be `DMP_<number of probes in file>_<number of samples processed>_<current_date>.<pkl|csv>`
+    shrink_var:
+        - If True, variance shrinkage will be employed and squeeze
+        variance using Bayes posterior means. Variance shrinkage
+        is recommended when analyzing small datasets (n < 10).
+        (NOT IMPLEMENTED YET)
 
-        The rows are sorted by q-value in ascending order to list the most significant
-        probes first. If q_cutoff is specified, only probes with significant q-values
-        less than the cutoff will be returned in the dataframe.
+Returns
+-------
 
-    If Progress Bar Missing:
-        if you don't see a progress bar in your jupyterlab notebook, try this:
-        - conda install -c conda-forge nodejs
-        - jupyter labextension install @jupyter-widgets/jupyterlab-manager
+    A pandas dataframe of regression statistics with a row for each probe analyzed
+    and columns listing the individual probe's regression statistics of:
+        - regression coefficient
+        - lower limit of the coefficient's 95% confidence interval
+        - upper limit of the coefficient's 95% confidence interval
+        - standard error
+        - p-value (phenotype group A vs B - likelihood that the difference is significant for this probe/location)
+        - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
+        - FDR_QValue: p value, adjusted for multiple comparisons
+
+    The rows are sorted by q-value in ascending order to list the most significant
+    probes first. If q_cutoff is specified, only probes with significant q-values
+    less than the cutoff will be returned in the dataframe.
+
+If Progress Bar Missing:
+    if you don't see a progress bar in your jupyterlab notebook, try this:
+    - conda install -c conda-forge nodejs
+    - jupyter labextension install @jupyter-widgets/jupyterlab-manager
     """
     if kwargs != {}:
         print('Additional parameters:', kwargs)
@@ -273,29 +276,29 @@ def diff_meth_pos(
 
 def linear_DMP_regression(probe_data,phenotypes):
     """
-    This function performs a linear regression on a single probe's worth of methylation
-    data (in the form of M-values). It is called by the detect_DMPs.
+This function performs a linear regression on a single probe's worth of methylation
+data (in the form of M-values). It is called by the detect_DMPs.
 
-    Inputs and Parameters
-    ---------------------------------------------------------------------------
-        probe_data: A pandas Series for a single probe with a methylation M-value
-                    for each sample in the analysis. The Series name corresponds
-                    to the probe ID, and the Series is extracted from the meth_data
-                    DataFrame through a parallellized loop in detect_DMPs.
-        phenotypes: A numpy array of numeric phenotypes with one phenotype per
-                    sample (so it must be the same length as probe_data). This is
-                    the same object as the pheno_data input to detect_DMPs after
-                    it has been checked for data type and converted to the
-                    numpy array pheno_data_array.
+Inputs and Parameters
+---------------------------------------------------------------------------
+    probe_data: A pandas Series for a single probe with a methylation M-value
+                for each sample in the analysis. The Series name corresponds
+                to the probe ID, and the Series is extracted from the meth_data
+                DataFrame through a parallellized loop in detect_DMPs.
+    phenotypes: A numpy array of numeric phenotypes with one phenotype per
+                sample (so it must be the same length as probe_data). This is
+                the same object as the pheno_data input to detect_DMPs after
+                it has been checked for data type and converted to the
+                numpy array pheno_data_array.
 
-    Returns:
-        A pandas Series of regression statistics for the single probe analyzed.
-        The columns of regression statistics are as follows:
-            - regression coefficient
-            - lower limit of the coefficient's 95% confidence interval
-            - upper limit of the coefficient's 95% confidence interval
-            - standard error
-            - p-value
+Returns:
+    A pandas Series of regression statistics for the single probe analyzed.
+    The columns of regression statistics are as follows:
+        - regression coefficient
+        - lower limit of the coefficient's 95% confidence interval
+        - upper limit of the coefficient's 95% confidence interval
+        - standard error
+        - p-value
     """
     ##Find the probe name for the single pandas series of data contained in probe_data
     probe_ID = probe_data.name
@@ -311,39 +314,45 @@ def linear_DMP_regression(probe_data,phenotypes):
     return probe_stats_row
 
 def logistic_DMP_regression(probe_data,phenotypes):
-    """ runs parallelized.
-    This function performs a logistic regression on a single probe's worth of methylation
-    data (in the form of M-values). It is called by the detect_DMPs.
+    """
+Runs parallelized.
+This function performs a logistic regression on a single probe's worth of methylation
+data (in the form of M-values). It is called by the detect_DMPs.
 
-    Inputs and Parameters
-    ---------------------------------------------------------------------------
-        probe_data: A pandas Series for a single probe with a methylation M-value
-                    for each sample in the analysis. The Series name corresponds
-                    to the probe ID, and the Series is extracted from the meth_data
-                    DataFrame through a parallellized loop in detect_DMPs.
-        phenotypes: A numpy array of binary phenotypes with one phenotype per
-                    sample (so it must be the same length as probe_data). This is
-                    the same object as the pheno_data input to detect_DMPs after
-                    it has been checked for data type and converted to the
-                    numpy array pheno_data_binary.
+Inputs and Parameters
+---------------------
 
-    Returns:
-        A pandas Series of regression statistics for the single probe analyzed.
-        The columns of regression statistics are as follows:
-            - regression coefficient
-            - lower limit of the coefficient's 95% confidence interval
-            - upper limit of the coefficient's 95% confidence interval
-            - standard error
-            - p-value
+    probe_data:
+        A pandas Series for a single probe with a methylation M-value
+        for each sample in the analysis. The Series name corresponds
+        to the probe ID, and the Series is extracted from the meth_data
+        DataFrame through a parallellized loop in detect_DMPs.
+    phenotypes:
+        A numpy array of binary phenotypes with one phenotype per
+        sample (so it must be the same length as probe_data). This is
+        the same object as the pheno_data input to detect_DMPs after
+        it has been checked for data type and converted to the
+        numpy array pheno_data_binary.
 
-        If the logistic regression was unsuccessful in fitting to the data due
-        to a Perfect Separation Error (as may be the case with small sample sizes)
-        or a Linear Algebra Error, the exception will be caught and the probe_stats_row
-        output will contain dummy values to flag the error. Perfect Separation Errors
-        are coded with the value -999 and Linear Algebra Errors are coded with value
-        -995. These rows are processed and removed in the next step of detect_DMPs to
-        prevent them from interfering with the final analysis and p-value correction
-        while printing a list of the unsuccessful probes to alert the user to the issues.
+Returns
+-------
+
+    A pandas Series of regression statistics for the single probe analyzed.
+    The columns of regression statistics are as follows:
+        - regression coefficient
+        - lower limit of the coefficient's 95% confidence interval
+        - upper limit of the coefficient's 95% confidence interval
+        - standard error
+        - p-value
+
+    If the logistic regression was unsuccessful in fitting to the data due
+    to a Perfect Separation Error (as may be the case with small sample sizes)
+    or a Linear Algebra Error, the exception will be caught and the probe_stats_row
+    output will contain dummy values to flag the error. Perfect Separation Errors
+    are coded with the value -999 and Linear Algebra Errors are coded with value
+    -995. These rows are processed and removed in the next step of detect_DMPs to
+    prevent them from interfering with the final analysis and p-value correction
+    while printing a list of the unsuccessful probes to alert the user to the issues.
     """
     ##Find the probe name for the single pandas series of data contained in probe_data
     probe_ID = probe_data.name
@@ -373,54 +382,55 @@ def logistic_DMP_regression(probe_data,phenotypes):
 
 def volcano_plot(stats_results, **kwargs):
     """
-    This function writes the pandas DataFrame output of detect_DMPs to a CSV file
-    named by the user. The DataFrame has a row for every successfully tested probe
-    and columns with different regression statistics as follows:
-            - regression coefficient
-            - lower limit of the coefficient's 95% confidence interval
-            - upper limit of the coefficient's 95% confidence interval
-            - standard error
-            - p-value
-            - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
+This function writes the pandas DataFrame output of detect_DMPs to a CSV file
+named by the user. The DataFrame has a row for every successfully tested probe
+and columns with different regression statistics as follows:
+        - regression coefficient
+        - lower limit of the coefficient's 95% confidence interval
+        - upper limit of the coefficient's 95% confidence interval
+        - standard error
+        - p-value
+        - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
 
-    Inputs and Parameters
-    ---------------------------------------------------------------------------
-        stats_results (required):
-            A pandas DataFrame output by the function detect_DMPs.
-        cutoff:
-            Default: 0.05 alpha level
-            The significance level that will be used to highlight the most
-            significant adjusted p-values (FDR Q-values) on the plot.
-        beta_coefficient_cutoff:
-            Default: No cutoff
-            format: a list or tuple with two numbers for (min, max)
-            If specified in kwargs, will limit plot to only values within the range of regression coefficients
-        visualization kwargs:
-            `palette` -- color pattern for plot -- default is [blue, red, grey]
-                other palettes: ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
-            `width` -- figure width -- default is 16
-            `height` -- figure height -- default is 8
-            `fontsize` -- figure font size -- default 16
-            `dotsize` -- figure dot size on chart -- default 30
-            `border` -- plot border --  default is OFF
-            `data_type_label` -- (e.g. Beta Values, M Values) -- default is 'Beta'
-        save:
-            specify that it export an image in `png` format.
-            By default, the function only displays a plot.
-        filename:
-            specify an export filename. default is `volcano_<current_date>.png`.
+Inputs and Parameters
+---------------------------------------------------------------------------
+    stats_results (required):
+        A pandas DataFrame output by the function detect_DMPs.
+    cutoff:
+        Default: 0.05 alpha level
+        The significance level that will be used to highlight the most
+        significant adjusted p-values (FDR Q-values) on the plot.
+    beta_coefficient_cutoff:
+        Default: No cutoff
+        format: a list or tuple with two numbers for (min, max)
+        If specified in kwargs, will limit plot to only values within the range of regression coefficients
+    visualization kwargs:
+        - `palette` -- color pattern for plot -- default is [blue, red, grey]
+            other palettes: ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
+        - `width` -- figure width -- default is 16
+        - `height` -- figure height -- default is 8
+        - `fontsize` -- figure font size -- default 16
+        - `dotsize` -- figure dot size on chart -- default 30
+        - `border` -- plot border --  default is OFF
+        - `data_type_label` -- (e.g. Beta Values, M Values) -- default is 'Beta'
+    save:
+        specify that it export an image in `png` format.
+        By default, the function only displays a plot.
+    filename:
+        specify an export filename. default is `volcano_<current_date>.png`.
 
-    Returns:
-        Displays a plot, but does not directly return an object.
-        The data is color coded and displayed as follows:
-            - the negative log of adjusted p-values is plotted on the y-axis
-            - the regression coefficient beta value is plotted on the x-axis
-            - the significance cutoff level appears as a horizontal gray dashed line
-            - non-significant points appear in light gray
-            - significant points with positive correlations (hypermethylated probes)
-              appear in red
-            - significant points with negative correlations (hypomethylated probes)
-              appear in blue
+Returns:
+    Displays a plot, but does not directly return an object.
+    The data is color coded and displayed as follows:
+
+    - the negative log of adjusted p-values is plotted on the y-axis
+    - the regression coefficient beta value is plotted on the x-axis
+    - the significance cutoff level appears as a horizontal gray dashed line
+    - non-significant points appear in light gray
+    - significant points with positive correlations (hypermethylated probes)
+      appear in red
+    - significant points with negative correlations (hypomethylated probes)
+      appear in blue
     """
     verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
     if kwargs.get('palette') in color_schemes:
@@ -495,48 +505,49 @@ def volcano_plot(stats_results, **kwargs):
 
 def manhattan_plot(stats_results, **kwargs):
     """
-    In EWAS Manhattan plots, epigenomic probe locations are displayed along the X-axis,
-    with the negative logarithm of the association P-value for each single nucleotide polymorphism
-    (SNP) displayed on the Y-axis, meaning that each dot on the Manhattan plot signifies a SNP.
-    Because the strongest associations have the smallest P-values (e.g., 10−15),
-    their negative logarithms will be the greatest (e.g., 15).
+In EWAS Manhattan plots, epigenomic probe locations are displayed along the X-axis,
+with the negative logarithm of the association P-value for each single nucleotide polymorphism
+(SNP) displayed on the Y-axis, meaning that each dot on the Manhattan plot signifies a SNP.
+Because the strongest associations have the smallest P-values (e.g., 10−15),
+their negative logarithms will be the greatest (e.g., 15).
 
-    GWAS vs EWAS
-    ============
-        - genomic coordinates along chromosomes vs epigenetic probe locations along chromosomes
-        - p-values are for the probe value associations, using linear or logistic regression,
-        between phenotype A and B.
+GWAS vs EWAS
+============
+    - genomic coordinates along chromosomes vs epigenetic probe locations along chromosomes
+    - p-values are for the probe value associations, using linear or logistic regression,
+    between phenotype A and B.
 
-    Ref
-    ===
-        Hints of hidden heritability in GWAS. Nature 2010. (https://www.ncbi.nlm.nih.gov/pubmed/20581876)
+Ref
+===
+    Hints of hidden heritability in GWAS. Nature 2010. (https://www.ncbi.nlm.nih.gov/pubmed/20581876)
 
-    Inputs
-    ======
-        stats_results: a pandas DataFrame containing the stats_results from the linear/logistic regression run on m_values or beta_values
-        and a pair of sample phenotypes. The DataFrame must contain A "PValue" column. the default output of diff_meth_pos() will work.
+Inputs
+======
+    stats_results: a pandas DataFrame containing the stats_results from the linear/logistic regression run on m_values or beta_values
+    and a pair of sample phenotypes. The DataFrame must contain A "PValue" column. the default output of diff_meth_pos() will work.
 
-    output kwargs
-    =============
-        save:
-            specify that it export an image in `png` format.
-            By default, the function only displays a plot.
-        filename:
-            specify an export filename. default is `volcano_<current_date>.png`.
+output kwargs
+=============
+    save:
+        specify that it export an image in `png` format.
+        By default, the function only displays a plot.
+    filename:
+        specify an export filename. default is `volcano_<current_date>.png`.
 
 
-    visualization kwargs
-    ====================
-        `verbose` (True/False) - default is True, verbose messages, if omitted.
-        `width` -- figure width -- default is 16
-        `height` -- figure height -- default is 8
-        `fontsize` -- figure font size -- default 16
-        `border` -- plot border --  default is OFF
-        `palette` -- specify one of a dozen options for colors of chromosome regions on plot:
-        ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3',
-        'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
-        `cutoff` -- threshold p-value for where to draw a line on the plot (default: 5x10^-8 on plot, or p<=0.05)
-            specify a number, such as 0.05.
+visualization kwargs
+====================
+
+    - `verbose` (True/False) - default is True, verbose messages, if omitted.
+    - `width` -- figure width -- default is 16
+    - `height` -- figure height -- default is 8
+    - `fontsize` -- figure font size -- default 16
+    - `border` -- plot border --  default is OFF
+    - `palette` -- specify one of a dozen options for colors of chromosome regions on plot:
+      ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3',
+      'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
+    - `cutoff` -- threshold p-value for where to draw a line on the plot (default: 5x10^-8 on plot, or p<=0.05)
+        specify a number, such as 0.05.
     """
     verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
     def_width = int(kwargs.get('width',16))
