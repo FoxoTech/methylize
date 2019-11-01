@@ -1,11 +1,10 @@
-import Path
 import pandas as pd
 #patching
-try:
-    # python 3.4+ should use builtin unittest.mock not mock package
-    from unittest.mock import patch
-except ImportError:
-    from mock import patch
+#try:
+#    # python 3.4+ should use builtin unittest.mock not mock package
+#    from unittest.mock import patch
+#except ImportError:
+#    from mock import patch
 import methylize
 
 meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
