@@ -1,0 +1,14 @@
+numpy
+scipy
+pandas
+matplotlib
+statsmodels
+joblib
+pytest
+coverage
+# coveralls-python -- broke readthedocs
+sphinx>=1.4
+sphinxcontrib-apidoc
+m2r
+nbsphinx
+tqdm
