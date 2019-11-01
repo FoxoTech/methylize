@@ -22,7 +22,7 @@ class TestInit():
     def test_diff_meth_pos_logistic(self):
         pheno_data = ["fetal","fetal","fetal","adult","adult","adult"]
         test_results = methylize.diff_meth_pos(
-            meth_data.sample(1000, axis=1)
+            meth_data.sample(1000, axis=1),
             pheno_data,
             regression_method="logistic",
             export=False)
@@ -31,7 +31,7 @@ class TestInit():
     def test_diff_meth_pos_linear(self):
         pheno_data = ["0","0","0","52","54","57"]
         test_results = methylize.diff_meth_pos(
-            meth_data.sample(1000, axis=1)
+            meth_data.sample(1000, axis=1),
             pheno_data,
             regression_method="linear",
             export=False)
