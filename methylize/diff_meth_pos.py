@@ -44,6 +44,8 @@ Inputs and Parameters
     pheno_data:
         A list or one dimensional numpy array of phenotypes
         for each sample row in meth_data.
+        Methylprep creates a `sample_sheet_meta_data.pkl` file containing the phenotype data for this input.
+        You just need to load it and specify which column to be used as the pheno_data.
         - Binary phenotypes can be presented as a list/array
         of zeroes and ones or as a list/array of strings made up
         of two unique words (i.e. "control" and "cancer"). The first
@@ -77,6 +79,11 @@ Inputs and Parameters
         variance using Bayes posterior means. Variance shrinkage
         is recommended when analyzing small datasets (n < 10).
         (NOT IMPLEMENTED YET)
+    max_workers:
+        (=INT) By default, this will parallelize probe processing, using all available cores.
+        During testing, or when running in a virtual environment like circleci or docker or lambda, the number of available cores
+        is fewer than the system's reported CPU cores, and it breaks. Use this to limit the available cores
+        to some arbitrary number for testing or containerized-usage.
 
 Returns
 -------
@@ -178,6 +185,8 @@ If Progress Bar Missing:
             ##Parallelize across all available cores using joblib
         f = delayed(logistic_DMP_regression)
         n_jobs = cpu_count()
+        if kwargs.get('max_workers'):
+            n_jobs = int(kwargs['max_workers'])
 
         with Parallel(n_jobs=n_jobs) as parallel:
             # Apply the logistic/linear regression function to each column in meth_data (all use the same phenotype data array)
@@ -240,6 +249,8 @@ If Progress Bar Missing:
             ##Parallelize across all available cores using joblib
         f = delayed(linear_DMP_regression)
         n_jobs = cpu_count()
+        if kwargs.get('max_workers'):
+            n_jobs = int(kwargs['max_workers'])
 
         with Parallel(n_jobs=n_jobs) as parallel:
             # Apply the linear regression function to each column in meth_data (all use the same phenotype data array)

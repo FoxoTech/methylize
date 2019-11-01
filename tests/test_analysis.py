@@ -24,7 +24,8 @@ class TestInit():
             meth_data.sample(1000, axis=1),
             pheno_data,
             regression_method="logistic",
-            export=False)
+            export=False,
+            max_workers=2)
         return test_results
 
     def test_diff_meth_pos_linear(self):
@@ -33,7 +34,8 @@ class TestInit():
             meth_data.sample(1000, axis=1),
             pheno_data,
             regression_method="linear",
-            export=False)
+            export=False,
+            max_workers=2)
         return test_results
 
     def test_manhattan(self):
