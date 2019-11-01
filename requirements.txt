@@ -3,6 +3,7 @@ scipy
 pandas
 matplotlib
 statsmodels
+joblib
 pytest
 coverage
 # coveralls-python -- broke readthedocs
