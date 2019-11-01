@@ -5,6 +5,7 @@
 
 1. [Overview](README.md)
 2. [Demonstrating differentially methylated probe (DMP) detection (volcano plot) and mapping to chrosomes (manhattan plot)](docs/demo_diff_meth_pos.ipynb)
+3. [About BumpHunter](docs/bumphunter.md)
 
 ## Methylize Package
 
@@ -110,14 +111,4 @@ If Progress Bar Missing:
     - conda install -c conda-forge nodejs
     - jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
-## About BumpHunter
 
-This includes a Jupyter Notebook running `bumphunter` (from R) with variations in parameters to see how sensitive the DMPs found are to different settings like cutoff percentile values, maximum cluster size, preprocessing method, and using Beta vs M-value as the methylation measure in the model.
-
-This function performs the bumphunting approach described by ``Jaffe et al. International Journal of Epidemiology (2012)``. The main output is a table of candidate regions with permutation or bootstrap-based family-wide error rates (FWER) and p-values assigned.
-
-The general idea is that for each genomic location we have a value for several individuals. We also have covariates for each individual and perform regression. This gives us one estimate of the coefficient of interest (a common example is case versus control). These estimates are then (optionally) smoothed. The smoothing occurs in clusters of locations that are ‘close enough’. This gives us an estimate of a genomic profile that is 0 when uninteresting. We then take values above (in absolute value) cutoff as candidate regions. Permutations can then performed to create null distributions for the candidate regions.
-
-The simplest way to use permutations or bootstraps to create a null distribution is to set B. If the number of samples is large this can be set to a large number, such as 1000. Note that this will be slow and we have therefore provided parallelization capabilities. In cases were the user wants to define the permutations or bootstraps, for example cases in which all possible permutations/boostraps can be enumerated, these can be supplied via the permutations argument.
-
-Uncertainty is assessed via permutations or bootstraps. Each of the B permutations/bootstraps will produce an estimated ‘null profile’ from which we can define ‘null candidate regions’. For each observed candidate region we determine how many null regions are ‘more extreme’ (longer and higher average value). The ‘p.value’ is the percent of candidate regions obtained from the permutations/boostraps that are as extreme as the observed region. These p-values should be interpreted with care as the theoretical proporties are not well understood. The ‘fwer’ is the proportion of permutations/bootstraps that had at least one region as extreme as the observed region. We compute p.values and FWER for the area of the regions (as opposed to length and value as a pair) as well. Note that for cases with more than one covariate the permutation approach is not generally recommended; the nullMethod argument will coerce to ‘bootstrap’ in this scenario. See vignette and original paper for more information.
