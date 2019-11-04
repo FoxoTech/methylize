@@ -53,6 +53,13 @@ Inputs and Parameters
         second string encountered will be convered to ones for the
         logistic regression analysis.
         - Use numbers for phenotypes if running linear regression.
+    column:
+        if pheno_data is a DataFrame, column='label' will select one series to be used as the phenotype data.
+    covariates: default []
+        if pheno_data is a DataFrame, specify a list of series by column_name to be used as the covariate data
+        in the linear/regression model.
+        [currently not implemented yet]
+
     regression_method: (logistic | linear)
         - Either the string "logistic" or the string "linear"
         depending on the phenotype data available.
@@ -111,12 +118,12 @@ If Progress Bar Missing:
         print('Additional parameters:', kwargs)
     verbose = False if kwargs.get('verbose') == False else True
 
-    ##Check that an available regression method has been selected
+    # Check that an available regression method has been selected
     regression_options = ["logistic","linear"]
     if regression_method not in regression_options:
         raise ValueError("Either a 'linear' or 'logistic' regression must be specified for this analysis.")
 
-    ##Check that meth_data is a numpy array with float type data
+    # Check that meth_data is a numpy array with float type data
     if type(meth_data) is pd.DataFrame:
         meth_dtypes = list(set(meth_data.dtypes))
         for d in meth_dtypes:
@@ -125,7 +132,21 @@ If Progress Bar Missing:
     else:
         raise ValueError("Methylation values must be in a pandas DataFrame")
 
-    ##Check that the methylation and phenotype data correspond to the same number of samples
+    # Check that meta_data has probes in colummns, and transpose if necessary.
+    if meth_data.shape[1] < 27000 and meth_data.shape[0] > 27000:
+        meth_data = meth_data.transpose()
+        print(f"Warning: meth_data was transposed: {meth_data.shape}")
+
+    # Check if pheno_data is a list, series, or dataframe
+    if isinstance(pheno_data, pd.DataFrame) and kwargs.get('column'):
+        try:
+            pheno_data = pheno_data[kwargs.get('column')]
+        except Exception as e:
+            raise ValueError("Column name you specified for pheno_data did not work: {kwargs.get('column')} ERROR: {e}")
+    elif isinstance(pheno_data, pd.DataFrame):
+        raise ValueError("You must specify a column by name when passing in a DataFrame for pheno_data.")
+
+    # Check that the methylation and phenotype data correspond to the same number of samples
     if len(pheno_data) != meth_data.shape[0]:
         raise ValueError("Methylation data and phenotypes must have the same number of samples")
 
@@ -414,7 +435,8 @@ Inputs and Parameters
     beta_coefficient_cutoff:
         Default: No cutoff
         format: a list or tuple with two numbers for (min, max)
-        If specified in kwargs, will limit plot to only values within the range of regression coefficients
+        If specified in kwargs, will exclude values within this range of regression coefficients
+        from being "significant" and put dotted vertical lines on chart.
     visualization kwargs:
         - `palette` -- color pattern for plot -- default is [blue, red, grey]
             other palettes: ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
@@ -452,36 +474,43 @@ Returns:
     if kwargs.get('palette') and kwargs.get('palette') not in color_schemes:
         print(f"WARNING: user supplied color palette {kwargs.get('palette')} is not a valid option! (Try: {list(color_schemes.keys())})")
     cutoff = 0.05 if not kwargs.get('cutoff') else kwargs.get('cutoff')
-    beta_coefficient_cutoff = kwargs.get('beta_coefficient_cutoff')
-    if beta_coefficient_cutoff != None and type(beta_coefficient_cutoff) in (list,tuple) and len(beta_coefficient_cutoff) == 2:
-        pass # OK
-        """
-            if beta_coefficient_cutoff != None and (
-                stats_results.Coefficient[i] < beta_coefficient_cutoff[0] or
-                stats_results.Coefficient[i] > beta_coefficient_cutoff[1]
-                ):
-                continue
-        """
-        pre = len(stats_results)
-        stats_results = stats_results[(beta_coefficient_cutoff[0] < stats_results['Coefficient']) & (stats_results['Coefficient'] < beta_coefficient_cutoff[1])] #|
-        print(f"Excluded {pre-len(stats_results)} probes outside of the specified beta coefficient range: {beta_coefficient_cutoff}")
-    elif beta_coefficient_cutoff != None:
-        print(f'WARNING: Your beta_coefficient_cutoff value ({beta_coefficient_cutoff}) is invalid. Pass a list or tuple with two values for min,max.')
+    bcutoff = kwargs.get('beta_coefficient_cutoff')
     def_width = int(kwargs.get('width',16))
     def_height = int(kwargs.get('height',8))
     def_fontsize = int(kwargs.get('fontsize',16))
     def_dot_size = int(kwargs.get('dotsize',30))
     border = True if kwargs.get('border') == True else False # default OFF
-    data_type_label = kwargs.get('data_type_label','Beta')
+    data_type_label = kwargs.get('data_type_label','Beta Coefficient')
     save = True if kwargs.get('save') else False
+
+    if bcutoff != None and type(bcutoff) in (list,tuple) and len(bcutoff) == 2:
+        pre = len(stats_results)
+        retained_stats_results = stats_results[
+            (stats_results['Coefficient'] < bcutoff[0])
+            | (stats_results['Coefficient'] > bcutoff[1])
+            ].index
+        print(f"Excluded {pre-len(retained_stats_results)} probes outside of the specified beta coefficient range: {bcutoff}")
+    elif bcutoff != None:
+        print(f'WARNING: Your beta_coefficient_cutoff value ({bcutoff}) is invalid. Pass a list or tuple with two values for min,max.')
+        bcutoff = None # prevent errors below
 
     palette = []
     for i in range(len(stats_results.FDR_QValue)):
         if stats_results.FDR_QValue[i] < cutoff:
             if stats_results.Coefficient[i] > 0:
-                palette.append(colors[0])
+                if bcutoff and stats_results.Coefficient[i] > bcutoff[1]:
+                    palette.append(colors[0])
+                elif bcutoff:
+                    palette.append(colors[2])
+                else:
+                    palette.append(colors[0]) # no beta-coef filtering applied
             else:
-                palette.append(colors[1])
+                if bcutoff and stats_results.Coefficient[i] < bcutoff[0]:
+                    palette.append(colors[1])
+                elif bcutoff:
+                    palette.append(colors[2])
+                else:
+                    palette.append(colors[1]) # no beta-coef filtering applied
         else:
             palette.append(colors[2])
     plt.rcParams.update({'font.family':'sans-serif', 'font.size': def_fontsize})
@@ -497,6 +526,9 @@ Returns:
     ax.set_xlabel(data_type_label)
     #plt.axhline(y=-np.log10(cutoff), color="grey", linestyle='--')
     ax.axhline(y=-np.log10(cutoff), color="grey", linestyle='--')
+    if kwargs.get('beta_coefficient_cutoff') and type(kwargs.get('beta_coefficient_cutoff')) in (list,tuple):
+        ax.axvline(x=kwargs.get('beta_coefficient_cutoff')[0], color="grey", linestyle='--')
+        ax.axvline(x=kwargs.get('beta_coefficient_cutoff')[1], color="grey", linestyle='--')
     # hide the border; unnecessary
     if border == False:
         ax.spines['top'].set_visible(False)
@@ -559,6 +591,8 @@ visualization kwargs
       'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
     - `cutoff` -- threshold p-value for where to draw a line on the plot (default: 5x10^-8 on plot, or p<=0.05)
         specify a number, such as 0.05.
+    - `label-prefix` -- how to refer to chromosomes. By default, it shows numbers 'CHR-' like CHR-1 .. CHR-22, X, and Y.
+        pass in '' to remove this, or rename with 'c' like: c01 ... c22.
     """
     verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
     def_width = int(kwargs.get('width',16))
@@ -584,7 +618,14 @@ visualization kwargs
     df['minuslog10pvalue'] = -np.log10(df.PValue)
     # map probes to chromosome using an internal methylize lookup pickle, probe2chr.
     pre_length = len(df)
-    df['chromosome'] = df.index.map(lambda x: probe2chr.get(x)) # values are CH-1, CH-2, CH-X...
+
+    if kwargs.get('label_prefix') == None:
+        # values are CHR-01, CHR-02, .. CHR-22, CHR-X... make 01, 02, .. 22 by default.
+        df['chromosome'] = df.index.map(lambda x: probe2chr.get(x))
+    elif kwargs.get('label_prefix') != None:
+        prefix = kwargs.get('label_prefix')
+        df['chromosome'] = df.index.map(lambda x: probe2chr.get(x).replace('CHR-',prefix) if probe2chr.get(x) else None)
+
     if len(df[df['chromosome'].isna() == True]) > 0:
         print('NaNs:', len(df[df['chromosome'].isna() == True]))
         df.dropna(subset=['chromosome'], inplace=True)
