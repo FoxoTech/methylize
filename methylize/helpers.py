@@ -1,5 +1,11 @@
 import matplotlib.pyplot as plt
 import matplotlib # color maps
+import time
+import numpy as np
+import pandas as pd
+from pathlib import Path
+
+__all__ = ['load']
 
 probe2chr = None
 probe2map = None
@@ -119,3 +125,58 @@ def readManifest(array):
     # manifest['nCpG'] = manifest['Name'].map(nCpGs)
     # determine types
     return manifest
+
+
+def load(filepath='.', format='beta_values', file_stem='', verbose=False):
+    """When methylprep processes large datasets, you use the 'batch_size' option to keep memory and file size
+    more manageable. Use the `load` helper function to quickly load and combine all of those parts into a single
+    data frame of beta-values or m-values.
+
+    Doing this with pandas is about 8 times slower than using numpy in the intermediate step.
+
+    If no arguments are supplied, it will load all files in current directory that have a 'beta_values_X.pkl' pattern.
+
+Arguments:
+    filepath:
+        Where to look for all the pickle files of processed data.
+
+    format:
+        'beta_values', 'm_value', or some other custom file pattern.
+
+    file_stem (string):
+        By default, methylprep process with batch_size creates a bunch of generically named files, such as
+        'beta_values_1.pkl', 'beta_values_2.pkl', 'beta_values_3.pkl', and so on. IF you rename these or provide
+        a custom name during processing, provide that name here.
+        (i.e. if your pickle file is called 'GSE150999_beta_values_X.pkl', then your file_stem is 'GSE150999_')
+    """
+    total_parts = list(Path(filepath).rglob(f'{file_stem}{format}*.pkl'))
+    start = time.process_time()
+    parts = []
+    #for i in range(1,total_parts):
+    probes = pd.DataFrame().index
+    samples = pd.DataFrame().index
+    for file in total_parts:
+        if verbose:
+            print(file)
+        df = pd.read_pickle(file)
+        if len(probes) == 0:
+            if df.shape[0] > df.shape[1]:
+                probes = df.index
+            else:
+                probes = df.columns
+            if verbose:
+                print(f'Probes: {len(probes)}')
+        if df.shape[0] > df.shape[1]:
+            samples = samples.append(df.columns)
+        else:
+            samples = samples.append(df.index)
+        npy = df.to_numpy()
+        parts.append(npy)
+    npy = np.concatenate(parts, axis=1) # 8x faster with npy vs pandas
+    # axis=1 -- assume that appending to rows, not columns. Each part has same columns (probes)
+    try:
+        df = pd.DataFrame(data=npy, index=samples, columns=probes)
+    except:
+        df = pd.DataFrame(data=npy, columns=samples, index=probes)
+    print(f'loaded data {df.shape} from {len(total_parts)} pickled files ({round(time.process_time() - start,3)}s)')
+    return df
