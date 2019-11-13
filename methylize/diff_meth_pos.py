@@ -1,3 +1,4 @@
+import logging
 import statsmodels.api as sm
 import numpy as np
 import pandas as pd
@@ -7,6 +8,9 @@ import matplotlib # color maps
 import datetime
 # app
 from .helpers import probe2chr, color_schemes
+
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
 
 def is_interactive():
     """ determine if script is being run within a jupyter notebook or as a script """

@@ -1,9 +1,13 @@
+import logging
 import matplotlib.pyplot as plt
 import matplotlib # color maps
 import time
 import numpy as np
 import pandas as pd
 from pathlib import Path
+
+LOGGER = logging.getLogger(__name__)
+LOGGER.setLevel(logging.INFO)
 
 __all__ = ['load']
 
@@ -126,8 +130,80 @@ def readManifest(array):
     # determine types
     return manifest
 
+def load_both(filepath='.', format='beta_values', file_stem='', verbose=False, silent=False):
+    """Loads any pickled files in the given filepath that match specified format,
+    plus the associated meta data frame. Returns TWO objects (data, meta) as dataframes for analysis.
 
-def load(filepath='.', format='beta_values', file_stem='', verbose=False):
+Arguments:
+    filepath:
+        Where to look for all the pickle files of processed data.
+
+    format:
+        'beta_values', 'm_value', or some other custom file pattern.
+
+    file_stem (string):
+        By default, methylprep process with batch_size creates a bunch of generically named files, such as
+        'beta_values_1.pkl', 'beta_values_2.pkl', 'beta_values_3.pkl', and so on. IF you rename these or provide
+        a custom name during processing, provide that name here.
+        (i.e. if your pickle file is called 'GSE150999_beta_values_X.pkl', then your file_stem is 'GSE150999_')
+
+    verbose:
+        outputs more processing messages.
+    silent:
+        suppresses all processing messages, even warnings.
+    """
+    meta_files = list(Path(filepath).rglob(f'*_meta_data.pkl'))
+    if len(meta_files) > 1:
+        LOGGER.info(f"Found several meta_data files; using: {meta_files[0]}")
+    if len(meta_files) > 0:
+        meta = pd.read_pickle(meta_files[0])
+    else:
+        LOGGER.info("No meta_data found.")
+        meta = pd.DataFrame()
+
+    data_df = load(filepath=filepath,
+        format=format,
+        file_stem=file_stem,
+        verbose=verbose,
+        silent=silent
+        )
+
+    ### confirm the Sample_ID in meta matches the columns (or index) in data_df.
+    check = False
+    if 'Sample_ID' in meta.columns:
+        if len(meta['Sample_ID']) == len(data_df.columns) and all(meta['Sample_ID'] == data_df.columns):
+            data_df = data_df.transpose() # samples should be in index
+            check = True
+        elif len(meta['Sample_ID']) == len(data_df.index) and all(meta['Sample_ID'] == data_df.index):
+            check = True
+        # or maybe the data is there, but mis-ordered? fix now.
+        elif set(meta['Sample_ID']) == set(data_df.columns):
+            LOGGER.info(f"Transposed data and reordered meta_data so sample ordering matches.")
+            data_df = data_df.transpose() # samples should be in index
+            # faster to realign the meta_data instead of the probe data
+            sample_order = {v:k for k,v in list(enumerate(data_df.index))}
+            # add a temporary column for sorting
+            meta['__temp_sorter__'] = meta['Sample_ID'].map(sample_order)
+            meta.sort_values('__temp_sorter__', inplace=True)
+            meta.drop('__temp_sorter__', axis=1, inplace=True)
+            check = True
+        elif set(meta['Sample_ID']) == set(data_df.index):
+            LOGGER.info(f"Reordered sample meta_data to match data.")
+            sample_order = {v:k for k,v in list(enumerate(data_df.index))}
+            meta['__temp_sorter__'] = meta['Sample_ID'].map(sample_order)
+            meta.sort_values('__temp_sorter__', inplace=True)
+            meta.drop('__temp_sorter__', axis=1, inplace=True)
+            check = True
+    else:
+        LOGGER.info('Could not check whether samples in data align with meta_data "Sample_ID" column.')
+    if check == False:
+        LOGGER.warning("Data samples don't align with 'Sample_ID' column in meta_data.")
+    else:
+        LOGGER.info("meta.Sample_IDs match data.index (OK)")
+    return data_df, meta
+
+
+def load(filepath='.', format='beta_values', file_stem='', verbose=False, silent=False):
     """When methylprep processes large datasets, you use the 'batch_size' option to keep memory and file size
     more manageable. Use the `load` helper function to quickly load and combine all of those parts into a single
     data frame of beta-values or m-values.
@@ -148,8 +224,17 @@ Arguments:
         'beta_values_1.pkl', 'beta_values_2.pkl', 'beta_values_3.pkl', and so on. IF you rename these or provide
         a custom name during processing, provide that name here.
         (i.e. if your pickle file is called 'GSE150999_beta_values_X.pkl', then your file_stem is 'GSE150999_')
+
+    verbose:
+        outputs more processing messages.
+    silent:
+        suppresses all processing messages, even warnings.
     """
     total_parts = list(Path(filepath).rglob(f'{file_stem}{format}*.pkl'))
+    if total_parts == []:
+        if not silent:
+            LOGGER.warning(f"No pickled files of type ({format}) found in {filepath} (or sub-folders).")
+        return
     start = time.process_time()
     parts = []
     #for i in range(1,total_parts):
@@ -178,5 +263,6 @@ Arguments:
         df = pd.DataFrame(data=npy, index=samples, columns=probes)
     except:
         df = pd.DataFrame(data=npy, columns=samples, index=probes)
-    print(f'loaded data {df.shape} from {len(total_parts)} pickled files ({round(time.process_time() - start,3)}s)')
+    if not silent:
+        LOGGER.info(f'loaded data {df.shape} from {len(total_parts)} pickled files ({round(time.process_time() - start,3)}s)')
     return df
