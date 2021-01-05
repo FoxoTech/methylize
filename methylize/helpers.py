@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 from itertools import chain
+from importlib import resources # py3.7+
 from .progress_bar import * # context tqdm
 
 LOGGER = logging.getLogger(__name__)
@@ -13,6 +14,7 @@ LOGGER.setLevel(logging.INFO)
 
 __all__ = ['load']
 
+pkg_namespace = 'methylize.data'
 probe2chr = None
 probe2map = None
 def load_probe_chr_map():
@@ -23,8 +25,11 @@ def load_probe_chr_map():
     # maps probes to chromosomes for all known probes in major array types.
     import pickle
     from pathlib import Path
-    with open(Path(Path(__file__).parent,'data','probe2chr.pkl'),'rb') as f:
-        probe2map = pickle.load(f)
+    #with open(Path(Path(__file__).parent,'data','probe2chr.pkl'),'rb') as f:
+    #    probe2map = pickle.load(f)
+    with resources.path(pkg_namespace, 'probe2chr.pkl') as probe2chr_filepath:
+        with open(probe2chr_filepath,'rb') as f:
+            probe2map = pickle.load(f)
         # structure is dataframe with 'CGidentifier, CHR, MAPINFO' columns -- bumphunter uses MAPINFO (chromosome position of probes)
     # dict for volcano plots, with a sortable order for chart
     probes = probe2map[['CGidentifier','CHR']].to_dict('records')
