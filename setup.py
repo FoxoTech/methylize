@@ -1,6 +1,6 @@
 # Lib
 from setuptools import setup, find_packages
-exec(open('methylsuite/version.py').read())
+exec(open('methylize/version.py').read())
 
 setup(
     name='methylize',
