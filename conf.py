@@ -20,11 +20,11 @@ sys.path.insert(0, os.path.abspath('.'))
 # -- Project information -----------------------------------------------------
 
 project = 'methylize'
-copyright = '2019, Life Epigenetics'
-author = 'Life Epigenetics'
+copyright = '2021, FOXO Bioscience'
+author = 'FOXO Bioscience'
 
 # The short X.Y version
-version = '0.9'
+version = '0.9.3'
 # The full version, including alpha/beta/rc tags
 release = '0.9'
 

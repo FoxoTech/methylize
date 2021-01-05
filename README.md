@@ -14,12 +14,12 @@ The `methylize` package contains both high-level APIs for processing data from l
 `Methylize` allows you to run linear or logistic regression on all probes and identify points of interest in the methylome where DNA is differentially modified. Then you can use these regression results to create *volcano plots* and *manhattan plots*.
 
 ### Sample Manhattan Plot
-![Manhattan Plot](docs/manhattan_example.png)
+![Manhattan Plot](https://github.com/FOXOBioScience/methylize/blob/master/docs/manhattan_example.png?raw=true)
 
-![Manhattan Plot (alternate coloring)](docs/manhattan_example2.png)
+![Manhattan Plot (alternate coloring)](https://github.com/FOXOBioScience/methylize/blob/master/docs/manhattan_example2.png?raw=true)
 
 ### Sample Volcano Plot
-![Volcano Plot](docs/volcano_example.png)
+![Volcano Plot](https://github.com/FOXOBioScience/methylize/blob/master/docs/volcano_example.png?raw=true)
 
 Customizable: Plot size, color palette, and cutoff p-value lines can be set by the user.
 Exporting: You can export all probe statistics, or just the significant probes as CSV or python pickled DataFrame.
@@ -107,6 +107,7 @@ Only 2 phenotypes are allowed with logistic regression. Linear regression can ta
 
 If Progress Bar Missing:
     if you don't see a progress bar in your jupyterlab notebook, try this:
+
     - conda install -c conda-forge nodejs
     - jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
@@ -114,6 +115,7 @@ If Progress Bar Missing:
 ### Loading processed data
 
 Assuming you previously used `methylprep` to process a data set like this:
+
 ```python
 python -m methylprep -v process -d GSE130030 --betas
 ```
