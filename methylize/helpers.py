@@ -16,25 +16,36 @@ pkg_namespace = 'methylize.data'
 probe2chr = None
 probe2map = None
 def load_probe_chr_map():
-    """ runs inside manhattan plot, and only needed there, but useful to load once if function called multiple times """
+    """__deprecated__ -- manhattan plot function will detect the array type and load this data when needed.
+    runs inside manhattan plot."""
     global probe2chr
     global probe2map
     if probe2chr != None:
         return
     # maps probes to chromosomes for all known probes in major array types.
-    import pickle
-    from pathlib import Path
-    with open(Path(Path(__file__).parent,'data','probe2chr.pkl'),'rb') as f:
-        probe2map = pickle.load(f)
+    probe2chr_path = Path(Path(__file__).parent,'data','probe2chr.csv')
+    probe2map = pd.read_csv(probe2chr_path)
     #with resources.path(pkg_namespace, 'probe2chr.pkl') as probe2chr_filepath:
     #    with open(probe2chr_filepath,'rb') as f:
     #        probe2map = pickle.load(f)
         # structure is dataframe with 'CGidentifier, CHR, MAPINFO' columns -- bumphunter uses MAPINFO (chromosome position of probes)
     # dict for volcano plots, with a sortable order for chart
-    probes = probe2map[['CGidentifier','CHR']].to_dict('records')
-    probe2chr = {probe['CGidentifier']:f"CHR-0{probe['CHR']}" if probe['CHR'] not in ('X','Y') and type(probe['CHR']) is str and int(probe['CHR']) < 10 else f"CHR-{probe['CHR']}" for probe in probes}
-    #OLD probe2chr = {k:f"CH-0{v}" if v not in ('X','Y') and type(v) is str and int(v) < 10 else f"CH-{v}" for k,v in probes.items()}
-load_probe_chr_map()
+    probe2map['CHR'] = probe2map['CHR'].apply(lambda i: f"CHR-0{i}" if i not in ('X','Y') and type(i) is str and int(i) < 10 else f"CHR-{i}")
+    probe2map = probe2map[ ~probe2map.CHR.isna() ] # drops control probes or any not linked to a chromosome
+    probe2chr = dict(zip(probe2map.CGidentifier, probe2map.CHR)) # computationally fasted conversion method
+    # OLD v0.9.3
+    #probes = probe2map[['CGidentifier','CHR']].to_dict('records') #SLOW!!!
+    #probe2chr = {probe['CGidentifier']:f"CHR-0{probe['CHR']}" if probe['CHR'] not in ('X','Y') and type(probe['CHR']) is str and int(probe['CHR']) < 10 else f"CHR-{probe['CHR']}" for probe in probes}
+    #OLD pre v0.9: probe2chr = {k:f"CH-0{v}" if v not in ('X','Y') and type(v) is str and int(v) < 10 else f"CH-{v}" for k,v in probes.items()}
+
+def create_probe_chr_map(manifest):
+    """ convert a manifest.data_frame into a dictionary that maps probe_ids to chromosomes, for manhattan plots. """
+    probe2map = manifest.data_frame[['CHR','MAPINFO']]
+    probe2map = probe2map[ ~probe2map.CHR.isna() ] # drops control probes or any not linked to a chromosome
+    probe2map['CHR'] = probe2map['CHR'].copy().apply(lambda i: f"CHR-0{i}" if i not in ('X','Y') and type(i) is str and int(i) < 10 else f"CHR-{i}")
+    probe2chr = dict(zip(probe2map.index, probe2map.CHR)) # computationally fasted conversion method
+    return probe2chr
+
 
 color_schemes = {}
 def load_color_schemes():

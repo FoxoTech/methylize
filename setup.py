@@ -39,7 +39,8 @@ setup(
         'pandas',
         'scipy',
         'statsmodels',
-        'matplotlib'
+        'matplotlib',
+        'methylprep'
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],

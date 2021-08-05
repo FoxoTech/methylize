@@ -6,8 +6,9 @@ from joblib import Parallel, delayed, cpu_count
 import matplotlib.pyplot as plt
 import matplotlib # color maps
 import datetime
+import methylprep
 # app
-from .helpers import probe2chr, color_schemes
+from .helpers import color_schemes, create_probe_chr_map
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -118,8 +119,8 @@ If Progress Bar Missing:
     - conda install -c conda-forge nodejs
     - jupyter labextension install @jupyter-widgets/jupyterlab-manager
     """
-    if kwargs != {}:
-        print('Additional parameters:', kwargs)
+    #if kwargs != {}:
+    #   print('Additional parameters:', kwargs)
     verbose = False if kwargs.get('verbose') == False else True
 
     # Check that an available regression method has been selected
@@ -235,9 +236,9 @@ If Progress Bar Missing:
         probe_stats = probe_stats.dropna(axis=0,how="all")
 
         # Correct all the p-values for multiple testing
-        probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")[1]
+        probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"], alpha=0.05, method="fdr_bh")[1]
         # Sort dataframe by q-values, ascending, to list most significant probes first
-        probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
+        probe_stats = probe_stats.sort_values("FDR_QValue", axis=0)
         # Limit dataframe to probes with q-values less than the specified cutoff
         probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] < q_cutoff]
 
@@ -395,7 +396,7 @@ Returns
     ##Fit the logistic model to the individual probe
     logit = sm.Logit(phenotypes,probe_data)
     try:
-        results = logit.fit()
+        results = logit.fit(disp=False)
         ##Extract desired statistical measures from logistic fit object
         probe_coef = results.params
         probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
@@ -550,7 +551,7 @@ Returns:
         plt.close(fig)
 
 
-def manhattan_plot(stats_results, **kwargs):
+def manhattan_plot(stats_results, array_type, **kwargs):
     """
 In EWAS Manhattan plots, epigenomic probe locations are displayed along the X-axis,
 with the negative logarithm of the association P-value for each single nucleotide polymorphism
@@ -568,10 +569,13 @@ Ref
 ===
     Hints of hidden heritability in GWAS. Nature 2010. (https://www.ncbi.nlm.nih.gov/pubmed/20581876)
 
-Inputs
-======
-    stats_results: a pandas DataFrame containing the stats_results from the linear/logistic regression run on m_values or beta_values
-    and a pair of sample phenotypes. The DataFrame must contain A "PValue" column. the default output of diff_meth_pos() will work.
+Required Inputs
+===============
+    stats_results:
+        a pandas DataFrame containing the stats_results from the linear/logistic regression run on m_values or beta_values
+        and a pair of sample phenotypes. The DataFrame must contain A "PValue" column. the default output of diff_meth_pos() will work.
+    array_type:
+        specify the type of array [450k, epic, epic+, mouse, 27k], so that probes can be mapped to chromosomes.
 
 output kwargs
 =============
@@ -622,6 +626,12 @@ visualization kwargs
     df['minuslog10pvalue'] = -np.log10(df.PValue)
     # map probes to chromosome using an internal methylize lookup pickle, probe2chr.
     pre_length = len(df)
+
+    array_types = {'450k', 'epic', 'mouse', '27k', 'epic+'}
+    if array_type.lower() not in array_types:
+        raise ValueError("Specify your array_type as one of {array_types}; '{array_type.lower()}' was not recognized.")
+    manifest = methylprep.Manifest(methylprep.ArrayType(array_type))
+    probe2chr = create_probe_chr_map(manifest)
 
     if kwargs.get('label_prefix') == None:
         # values are CHR-01, CHR-02, .. CHR-22, CHR-X... make 01, 02, .. 22 by default.

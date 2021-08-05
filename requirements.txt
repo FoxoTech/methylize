@@ -12,3 +12,4 @@ sphinxcontrib-apidoc
 m2r
 nbsphinx
 tqdm
+methylprep
