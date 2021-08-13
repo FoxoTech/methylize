@@ -41,6 +41,7 @@ def load_probe_chr_map():
 def create_probe_chr_map(manifest):
     """ convert a manifest.data_frame into a dictionary that maps probe_ids to chromosomes, for manhattan plots. """
     probe2map = manifest.data_frame[['CHR','MAPINFO']]
+    probe2map = probe2map[ ~(probe2map['CHR'].isin(['*','M'])) ] # mouse manifest has '*' where should be NA, omitting these.
     probe2map = probe2map[ ~probe2map.CHR.isna() ] # drops control probes or any not linked to a chromosome
     probe2map['CHR'] = probe2map['CHR'].copy().apply(lambda i: f"CHR-0{i}" if i not in ('X','Y') and type(i) is str and int(i) < 10 else f"CHR-{i}")
     probe2chr = dict(zip(probe2map.index, probe2map.CHR)) # computationally fasted conversion method
