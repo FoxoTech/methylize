@@ -21,7 +21,7 @@ def is_interactive():
 if is_interactive():
     from tqdm import tqdm_notebook as tqdm
 else:
-    from tqdm import tqdm
+    from tqdm.auto import tqdm
 
 def diff_meth_pos(
     meth_data,
@@ -274,7 +274,6 @@ Notes on imputation:
 
         with Parallel(n_jobs=n_jobs) as parallel:
             # Apply the logistic/linear regression function to each column in meth_data (all use the same phenotype data array)
-            pbar = tqdm(total=len(all_probes), miniters=1)
             parallel_cleaned_list = []
             multi_probe_errors = 0
             def para_gen(meth_data):
@@ -286,11 +285,9 @@ Notes on imputation:
                         probe_data.name = _probe
                         multi_probe_errors += 1
                     # columns are probes, so each probe passes in parallel
-                    pbar.update()
                     yield probe_data
-            pbar.close()
             # this generates all the data without loading into memory, and fixes mouse array
-            probe_stat_rows = parallel(func(probe_data, pheno_data_binary) for probe_data in para_gen(meth_data))
+            probe_stat_rows = parallel(func(probe_data, pheno_data_binary) for probe_data in tqdm(para_gen(meth_data), total=len(all_probes)))
             #probe_stat_rows = parallel(f(meth_data[x], pheno_data_binary) for x in meth_data)
             # Concatenate the probes' statistics together into one dataframe
             logistic_probe_stats = pd.concat(probe_stat_rows,axis=1)
