@@ -21,15 +21,14 @@ def is_interactive():
 if is_interactive():
     from tqdm import tqdm_notebook as tqdm
 else:
-    from tqdm import tqdm
-
+    from tqdm.auto import tqdm
 
 def diff_meth_pos(
     meth_data,
     pheno_data,
     regression_method="linear",
     q_cutoff=1,
-    shrink_var=False,
+    impute='delete',
     **kwargs):
     """
 This function searches for individual differentially methylated positions/probes
@@ -43,7 +42,7 @@ Inputs and Parameters
 ---------------------
 
     meth_data:
-        A pandas dataframe of methylation M-values for
+        A pandas dataframe of methylation beta_values (or M-values) for
         where each column corresponds to a CpG site probe and each
         row corresponds to a sample.
     pheno_data:
@@ -86,16 +85,18 @@ Inputs and Parameters
     filename:
         - specify a filename for the exported file.
         By default, if not specified, filename will be `DMP_<number of probes in file>_<number of samples processed>_<current_date>.<pkl|csv>`
-    shrink_var:
-        - If True, variance shrinkage will be employed and squeeze
-        variance using Bayes posterior means. Variance shrinkage
-        is recommended when analyzing small datasets (n < 10).
-        (NOT IMPLEMENTED YET)
     max_workers:
         (=INT) By default, this will parallelize probe processing, using all available cores.
         During testing, or when running in a virtual environment like circleci or docker or lambda, the number of available cores
         is fewer than the system's reported CPU cores, and it breaks. Use this to limit the available cores
         to some arbitrary number for testing or containerized-usage.
+    impute:
+        Default: 'delete' probes if any samples have missing data for that probe.
+        True or 'auto': if <30 samples, deletes rows; if >=30 samples, uses average.
+        False: don't impute and throw an error if NaNs present
+        'average' - use the average of probe values in this batch
+        'delete' - drop probes if NaNs are present in any sample
+        'fast' - use adjacent sample probe value instead of average (much faster but less precise)
 
 Returns
 -------
@@ -118,7 +119,24 @@ If Progress Bar Missing:
     if you don't see a progress bar in your jupyterlab notebook, try this:
     - conda install -c conda-forge nodejs
     - jupyter labextension install @jupyter-widgets/jupyterlab-manager
+
+Notes on imputation:
+    Because methylprep output contains missing values by default, this function requires user to either delete or impute missing values.
+  - This can be disabled, and it will throw a warning if NaNs present.
+  - default is to drop probes with NaNs.
+  - auto:
+    - If there are less than 30 samples, it will delete the missing rows.
+    - If there are >= 30 samples in the batch analyzed, it will replace NaNs with the
+    average value for that probe across all samples.
+  - User may specify: True, 'auto', False, 'delete', 'average'
     """
+    #TODO
+    # shrink_var:
+    #    - If True, variance shrinkage will be employed and squeeze
+    #    variance using Bayes posterior means. Variance shrinkage
+    #    is recommended when analyzing small datasets (n < 10).
+    #    (NOT IMPLEMENTED YET)
+
     #if kwargs != {}:
     #   print('Additional parameters:', kwargs)
     verbose = False if kwargs.get('verbose') == False else True
@@ -137,10 +155,50 @@ If Progress Bar Missing:
     else:
         raise ValueError("Methylation values must be in a pandas DataFrame")
 
-    # Check that meta_data has probes in colummns, and transpose if necessary.
+    # Check that numbers are not float16
+    if any(meth_data.dtypes == 'float16'):
+        raise ValueError("Convert your numbers from float16 to float32 first.")
+
+    # Check that meth_data has probes in colummns, and transpose if necessary.
     if meth_data.shape[1] < 27000 and meth_data.shape[0] > 27000:
         meth_data = meth_data.transpose()
         print(f"Warning: meth_data was transposed: {meth_data.shape}")
+
+    # Check for missing values, and impute if necessary
+    if any(meth_data.isna().sum()):
+        if impute == 'fast':
+            meth_data = meth_data.fillna(axis='index', method='bfill') # uses adjacent probe value from same sample to make MDS work.
+            meth_data = meth_data.fillna(axis='index', method='ffill') # uses adjacent probe value from same sample to make MDS work.
+            still_nan = int(meth_data.isna().sum(axis=1).mean())
+            #meth_data = meth_data.replace(np.nan, -1) # anything still NA
+            meth_data = meth_data.dropna(how='any', axis='columns')
+            LOGGER.warning(f"Dropped {still_nan} probes per sample that could not be imputed, leaving {meth_data.shape[1]} probes.")
+        elif (impute == 'average' or
+            (impute == 'auto' and meth_data.shape[0] >= 30) or
+            (isinstance(impute,bool) and impute == True and meth_data.shape[0] >= 30)):
+            pre_count = meth_data.shape[1]
+            meth_data = meth_data.dropna(how='all', axis='columns') # if probe is NaN on all samples, omit.
+            post_count = meth_data.shape[1]
+            nan_per_sample = int(meth_data.isna().sum(axis=1).mean())
+            probe_means = meth_data.mean(axis='columns')
+            meth_data = meth_data.transpose().fillna(value=probe_means).transpose()
+            if pre_count > post_count:
+                LOGGER.warning(f"Dropped {pre_count-post_count} probes that were missing in all samples. Imputed {nan_per_sample} probes per sample.")
+        elif (impute == 'delete' or
+            (impute == 'auto' and meth_data.shape[0] < 30) or
+            (isinstance(impute,bool) and impute in ('auto',True) and meth_data.shape[0] < 30)):
+            pre_count = meth_data.shape[1]
+            meth_data = meth_data.dropna(how='any', axis='columns') # if probe is NaN on ANY samples, omit that probe
+            post_count = meth_data.shape[1]
+            if pre_count > post_count:
+                LOGGER.warning(f"Dropped {pre_count-post_count} probes with missing values from all samples")
+        elif isinstance(impute,bool) and impute == False:
+            raise ValueError("meth_data contains missing values, but impute step was explicitly disabled.")
+        else:
+            raise ValueError(f"Unrecognized impute method '{impute}': Choose from (auto, True, False, fast, average, delete)")
+
+        if meth_data.shape[0] == 0 or meth_data.shape[1] == 0:
+            raise ValueError(f"Impute method ({impute}) eliminated all probes. Cannot proceed.")
 
     # Check if pheno_data is a list, series, or dataframe
     if isinstance(pheno_data, pd.DataFrame) and kwargs.get('column'):
@@ -153,7 +211,7 @@ If Progress Bar Missing:
 
     # Check that the methylation and phenotype data correspond to the same number of samples
     if len(pheno_data) != meth_data.shape[0]:
-        raise ValueError("Methylation data and phenotypes must have the same number of samples")
+        raise ValueError(f"Methylation data and phenotypes must have the same number of samples; found {len(meth_data)} meth and {len(pheno_data)} pheno.")
 
     ##Extract column names corresponding to all probes to set row indices for results
     all_probes = meth_data.columns.values.tolist()
@@ -203,44 +261,60 @@ If Progress Bar Missing:
             pheno_data_binary[zero_inds] = 0
             pheno_data_binary[one_inds] = 1
             ##Coerce array class to integers
-            pheno_data_binary = np.array(pheno_data_binary,dtype=np.int)
+            pheno_data_binary = np.array(pheno_data_binary,dtype=int)
             ##Print a message to let the user know what values were converted to zeroes and ones
             print(f"All samples with the phenotype ({list(pheno_options)[0]}) were assigned a value of 0 and all samples with the phenotype ({list(pheno_options)[1]}) were assigned a value of 1 for the logistic regression analysis.")
 
         ##Fit least squares regression to each probe of methylation data
             ##Parallelize across all available cores using joblib
-        f = delayed(logistic_DMP_regression)
+        func = delayed(logistic_DMP_regression)
         n_jobs = cpu_count()
         if kwargs.get('max_workers'):
             n_jobs = int(kwargs['max_workers'])
 
         with Parallel(n_jobs=n_jobs) as parallel:
             # Apply the logistic/linear regression function to each column in meth_data (all use the same phenotype data array)
-            probe_stat_rows = parallel(f(meth_data[x],pheno_data_binary) for x in tqdm(meth_data, total=len(all_probes)))
+            parallel_cleaned_list = []
+            multi_probe_errors = 0
+            def para_gen(meth_data):
+                for _probe in meth_data:
+                    probe_data = meth_data[_probe]
+                    if isinstance(probe_data, pd.DataFrame):
+                        # happens with mouse when multiple probes have the same name
+                        probe_data = probe_data.mean(axis='columns')
+                        probe_data.name = _probe
+                        multi_probe_errors += 1
+                    # columns are probes, so each probe passes in parallel
+                    yield probe_data
+            # this generates all the data without loading into memory, and fixes mouse array
+            probe_stat_rows = parallel(func(probe_data, pheno_data_binary) for probe_data in tqdm(para_gen(meth_data), total=len(all_probes)))
+            #probe_stat_rows = parallel(f(meth_data[x], pheno_data_binary) for x in meth_data)
             # Concatenate the probes' statistics together into one dataframe
             logistic_probe_stats = pd.concat(probe_stat_rows,axis=1)
 
         # Combine the parallel-processed linear regression results into one pandas dataframe
-            # The concatenation after joblib's parallellization produced a dataframe with a column for each probe
-            # so transpose it to probes by rows instead
+        # The concatenation after joblib's parallellization produced a dataframe with a column for each probe
+        # so transpose it to probes by rows instead
         probe_stats = logistic_probe_stats.T
 
         # Pull out probes that encountered perfect separation or linear algebra errors to remove them from the
-            # final stats dataframe while alerting the user to the issues fitting regressions to these individual probes
+        # final stats dataframe while alerting the user to the issues fitting regressions to these individual probes
         perfect_sep_probes = probe_stats.index[probe_stats["PValue"]==-999]
         linalg_error_probes = probe_stats.index[probe_stats["PValue"]==-995]
         probe_stats = probe_stats.drop(index=perfect_sep_probes)
         probe_stats = probe_stats.drop(index=linalg_error_probes)
-
         # Remove any rows that still have NAs (probes that couldn't be analyzed due to perfect separation or LinAlgError)
         probe_stats = probe_stats.dropna(axis=0,how="all")
 
         # Correct all the p-values for multiple testing
         probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"], alpha=0.05, method="fdr_bh")[1]
         # Sort dataframe by q-values, ascending, to list most significant probes first
+        #if len(probe_stats['FDR_QValue'].value_counts()) == 1 and len(probe_stats.loc[(probe_stats['FDR_QValue'] == 1)]) == len(probe_stats):
+        #    LOGGER.warning("All probes have a p-value significance of 1.0, so your grouping variables are not reliable.")
+
         probe_stats = probe_stats.sort_values("FDR_QValue", axis=0)
         # Limit dataframe to probes with q-values less than the specified cutoff
-        probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] < q_cutoff]
+        probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] <= q_cutoff]
 
         # Print a message to let the user know how many and which probes failed
         # with perfect separation
@@ -273,14 +347,14 @@ If Progress Bar Missing:
 
         ##Fit least squares regression to each probe of methylation data
             ##Parallelize across all available cores using joblib
-        f = delayed(linear_DMP_regression)
+        func = delayed(linear_DMP_regression)
         n_jobs = cpu_count()
         if kwargs.get('max_workers'):
             n_jobs = int(kwargs['max_workers'])
 
         with Parallel(n_jobs=n_jobs) as parallel:
             # Apply the linear regression function to each column in meth_data (all use the same phenotype data array)
-            probe_stat_rows = parallel(f(meth_data[x],pheno_data_array) for x in tqdm(meth_data, total=len(all_probes)))
+            probe_stat_rows = parallel(func(meth_data[x], pheno_data_array) for x in tqdm(meth_data, total=len(all_probes)))
             # Concatenate the probes' statistics together into one dataframe
             linear_probe_stats = pd.concat(probe_stat_rows,axis=1)
 
@@ -350,7 +424,8 @@ Returns:
     probe_stats_row = pd.Series({"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[1][0]},name=probe_ID)
     return probe_stats_row
 
-def logistic_DMP_regression(probe_data,phenotypes):
+
+def logistic_DMP_regression(probe_data, phenotypes, debug=False):
     """
 Runs parallelized.
 This function performs a logistic regression on a single probe's worth of methylation
@@ -360,7 +435,7 @@ Inputs and Parameters
 ---------------------
 
     probe_data:
-        A pandas Series for a single probe with a methylation M-value
+        A pandas Series for a single probe with a methylation M-value or beta_value
         for each sample in the analysis. The Series name corresponds
         to the probe ID, and the Series is extracted from the meth_data
         DataFrame through a parallellized loop in detect_DMPs.
@@ -393,10 +468,11 @@ Returns
     """
     ##Find the probe name for the single pandas series of data contained in probe_data
     probe_ID = probe_data.name
+
     ##Fit the logistic model to the individual probe
     logit = sm.Logit(phenotypes,probe_data)
     try:
-        results = logit.fit(disp=False)
+        results = logit.fit(disp=debug, warn_convergence=False) # so if debug is True, display in True
         ##Extract desired statistical measures from logistic fit object
         probe_coef = results.params
         probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
@@ -629,7 +705,7 @@ visualization kwargs
 
     array_types = {'450k', 'epic', 'mouse', '27k', 'epic+'}
     if array_type.lower() not in array_types:
-        raise ValueError("Specify your array_type as one of {array_types}; '{array_type.lower()}' was not recognized.")
+        raise ValueError(f"Specify your array_type as one of {array_types}; '{array_type.lower()}' was not recognized.")
     manifest = methylprep.Manifest(methylprep.ArrayType(array_type))
     probe2chr = create_probe_chr_map(manifest)
 

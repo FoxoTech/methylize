@@ -2,27 +2,26 @@ version: 2
 jobs:
   build:
     docker:
-      - image: circleci/python:3.7
+      - image: circleci/python:3.8
     steps:
       - checkout
       - run: sudo chown -R circleci:circleci /usr/local/bin
-      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.7/site-packages
+      - run: sudo chown -R circleci:circleci /usr/local/lib/python3.8/site-packages
       - restore_cache:
           # key: <projectname>-{{ .Branch }}-{{ checksum "Pipfile.lock" }}  projectname can be anything, so long as it matches save_cache below.
-          # key: deps9-{{ .Branch }}-{{ checksum "Pipfile.lock" }}
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps2-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
           command: |
             pip install pipenv
-            pipenv install --dev --skip-lock 
+            pipenv install --dev --skip-lock
             pipenv install -e . --skip-lock # pytest recommends this: install your package in "editable" mode by running this from the same directory
             # pipenv will use requirements.txt with these params.
       - save_cache:
-          key: deps1-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: deps2-{{ .Branch }}-{{ checksum "requirements.txt" }}
           paths:
             - ".venv"
             - "/usr/local/bin"
-            - "/usr/local/lib/python3.7/site-packages"
+            - "/usr/local/lib/python3.8/site-packages"
       - run:
           name: Running tests and test coverage
           command: |
@@ -35,7 +34,7 @@ jobs:
             pipenv run coveralls
             # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
             # pipenv run coverage run --omit '*tests*','*/home/*' setup.py test
-            # moved omit to setup.cfg; broke on circleci - no uploads            
+            # moved omit to setup.cfg; broke on circleci - no uploads
 
       - store_test_results:
           path: htmlcov
