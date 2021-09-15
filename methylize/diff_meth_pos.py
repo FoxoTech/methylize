@@ -676,7 +676,7 @@ visualization kwargs
     - `cutoff` -- threshold p-value for where to draw a line on the plot (default: 5x10^-8 on plot, or p<=0.05)
         specify a number, such as 0.05.
     - `label-prefix` -- how to refer to chromosomes. By default, it shows numbers 'CHR-' like CHR-1 .. CHR-22, X, and Y.
-        pass in '' to remove this, or rename with 'c' like: c01 ... c22.
+        pass in '' to remove this from plots, or rename with 'c' like: c01 ... c22.
     """
     verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
     def_width = int(kwargs.get('width',16))

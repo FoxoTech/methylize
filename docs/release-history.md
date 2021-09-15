@@ -1,5 +1,12 @@
 # Release History
 
+## v1.0.0
+- Support for including/excluding sex chromosomes from DMP (probe2chr map)
+- Added differentially methylated regions (DMR) functions, alongside diff-meth-pos(ition) DMP functions.
+    - DMP maps differences to chromosomes; DMR maps differences to specific genomic locii, and requires more processing.
+    - upgraded methylprep manifests to support both old and new genomic build mappings for all array types.
+    - Illumina 27k arrays are still not supported, but mouse, epic, epic+, and 450k ARE supported.
+
 ## v0.9.5
 - Added imputation to diff_meth_pos() function, because methylprep output contains missing values
 by default and cannot be used in this function.

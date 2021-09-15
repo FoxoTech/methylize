@@ -40,7 +40,8 @@ setup(
         'scipy',
         'statsmodels',
         'matplotlib',
-        'methylprep'
+        'methylprep',
+        'methylcheck',
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
