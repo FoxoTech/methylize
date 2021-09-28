@@ -38,6 +38,20 @@ def load_probe_chr_map():
     #probe2chr = {probe['CGidentifier']:f"CHR-0{probe['CHR']}" if probe['CHR'] not in ('X','Y') and type(probe['CHR']) is str and int(probe['CHR']) < 10 else f"CHR-{probe['CHR']}" for probe in probes}
     #OLD pre v0.9: probe2chr = {k:f"CH-0{v}" if v not in ('X','Y') and type(v) is str and int(v) < 10 else f"CH-{v}" for k,v in probes.items()}
 
+def create_mapinfo(manifest, use='MAPINFO', include_sex=True):
+    """ convert a manifest.data_frame into a dictionary that maps probe_ids to chromosomes, for manhattan plots.
+    use: CHR or OLD_CHR to toggle which genome build to use from manifest."""
+    sex_chromosomes = ['X','Y']
+    probe2map = manifest.data_frame[[use, 'CHR']]
+    probe2map = probe2map[ ~probe2map[use].isna() ] # drops control probes or any not linked to a chromosome
+    if include_sex:
+        probe2map = probe2map[ (probe2map['CHR'].str.isdigit() | probe2map['CHR'].isin(['X','Y'])) ] #manifests have 'X,Y,M,*' omitting these.
+    else:
+        probe2map = probe2map[ probe2map['CHR'].str.isdigit() ] #manifests have 'X,Y,M,*' omitting these.
+    probe2map[use] = probe2map[use].apply(lambda i: f"CHR-0{i}" if str(i).isdigit() and int(i) < 10 else f"CHR-{i}")
+    #probe2chr = dict(zip(probe2map.index, probe2map[use])) # computationally fastest conversion method
+    return probe2map # dataframe with CHR and MAPINFO columns and probe_names in index.
+
 def create_probe_chr_map(manifest, use='CHR', include_sex=True):
     """ convert a manifest.data_frame into a dictionary that maps probe_ids to chromosomes, for manhattan plots.
     use: CHR or OLD_CHR to toggle which genome build to use from manifest."""

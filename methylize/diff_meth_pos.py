@@ -1,14 +1,17 @@
 import logging
-import statsmodels.api as sm
 import numpy as np
 import pandas as pd
+import statsmodels.api as sm
+from statsmodels.stats.multitest import multipletests
+from scipy.stats import linregress, pearsonr, norm
+from scipy.stats import t as student_t
 from joblib import Parallel, delayed, cpu_count
 import matplotlib.pyplot as plt
 import matplotlib # color maps
 import datetime
 import methylprep
 # app
-from .helpers import color_schemes, create_probe_chr_map
+from .helpers import color_schemes, create_probe_chr_map, create_mapinfo
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -76,6 +79,8 @@ Inputs and Parameters
         p-values corrected according to the model's false discovery
         rate (FDR).
         - Default: 1 -- returns all DMPs regardless of significance.
+    alpha: float
+        Default is 0.05 for all tests where it applies.
     export:
         - default: False
         - if True or 'csv', saves a csv file with data
@@ -140,6 +145,7 @@ Notes on imputation:
     #if kwargs != {}:
     #   print('Additional parameters:', kwargs)
     verbose = False if kwargs.get('verbose') == False else True
+    alpha = kwargs.get('alpha',0.05)
 
     # Check that an available regression method has been selected
     regression_options = ["logistic","linear"]
@@ -307,7 +313,7 @@ Notes on imputation:
         probe_stats = probe_stats.dropna(axis=0,how="all")
 
         # Correct all the p-values for multiple testing
-        probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"], alpha=0.05, method="fdr_bh")[1]
+        probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"], alpha=alpha, method="fdr_bh")[1]
         # Sort dataframe by q-values, ascending, to list most significant probes first
         #if len(probe_stats['FDR_QValue'].value_counts()) == 1 and len(probe_stats.loc[(probe_stats['FDR_QValue'] == 1)]) == len(probe_stats):
         #    LOGGER.warning("All probes have a p-value significance of 1.0, so your grouping variables are not reliable.")
@@ -354,19 +360,30 @@ Notes on imputation:
 
         with Parallel(n_jobs=n_jobs) as parallel:
             # Apply the linear regression function to each column in meth_data (all use the same phenotype data array)
-            probe_stat_rows = parallel(func(meth_data[x], pheno_data_array) for x in tqdm(meth_data, total=len(all_probes)))
+            probe_stat_rows = parallel(func(meth_data[x], pheno_data_array, alpha=alpha) for x in tqdm(meth_data, total=len(all_probes)))
             # Concatenate the probes' statistics together into one dataframe
-            linear_probe_stats = pd.concat(probe_stat_rows,axis=1)
+            linear_probe_stats = pd.concat(probe_stat_rows, axis=1)
 
         # Combine the parallel-processed linear regression results into one pandas dataframe
-            # The concatenation after joblib's parallellization produced a dataframe with a column for each probe
-            # so transpose it to probes by rows instead
+        # The concatenation after joblib's parallellization produced a dataframe with a column for each probe
+        # so transpose it to probes by rows instead
         probe_stats = linear_probe_stats.T
 
+        """ Note:
+            This function uses the False Discovery Rate (FDR) approach.
+            The Benjamini–Hochberg method controls the False Discovery Rate (FDR) using sequential modified Bonferroni correction
+            for multiple hypothesis testing. While the Bonferroni correction relies on the Family Wise Error Rate (FWER),
+            Benjamini and Hochberg introduced the idea of a FDR to control for multiple hypotheses testing. In the statistical
+            context, discovery refers to the rejection of a hypothesis. Therefore, a false discovery is an incorrect rejection
+            of a hypothesis and the FDR is the likelihood such a rejection occurs. Controlling the FDR instead of the FWER is
+            less stringent and increases the method’s power. As a result, more hypotheses may be rejected and more discoveries
+            may be made. (From the Encyclopedia of Systems Biology: https://link.springer.com/referenceworkentry/10.1007%2F978-1-4419-9863-7_1215)
+        """
+
         # Correct all the p-values for multiple testing
-        probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"],alpha=0.05,method="fdr_bh")[1]
+        probe_stats["FDR_QValue"] = sm.stats.multipletests(probe_stats["PValue"], alpha=0.05, method="fdr_bh")[1]
         # Sort dataframe by q-value, ascending, to list most significant probes first
-        probe_stats = probe_stats.sort_values("FDR_QValue",axis=0)
+        probe_stats = probe_stats.sort_values("FDR_QValue", axis=0)
         # Limit dataframe to probes with q-values less than the specified cutoff
         probe_stats = probe_stats.loc[probe_stats["FDR_QValue"] < q_cutoff]
         # Alert the user if there are no significant DMPs within the cutoff range they specified
@@ -385,14 +402,15 @@ Notes on imputation:
     # a dataframe of regression statistics with a row for each probe and a column for each statistical measure
     return probe_stats
 
-def linear_DMP_regression(probe_data,phenotypes):
+
+def linear_DMP_regression(probe_data, phenotypes, alpha=0.05):
     """
 This function performs a linear regression on a single probe's worth of methylation
 data (in the form of M-values). It is called by the detect_DMPs.
 
 Inputs and Parameters
 ---------------------------------------------------------------------------
-    probe_data: A pandas Series for a single probe with a methylation M-value
+    probe_data: A pandas Series for a single probe with a methylation M-value/beta-value
                 for each sample in the analysis. The Series name corresponds
                 to the probe ID, and the Series is extracted from the meth_data
                 DataFrame through a parallellized loop in detect_DMPs.
@@ -413,15 +431,36 @@ Returns:
     """
     ##Find the probe name for the single pandas series of data contained in probe_data
     probe_ID = probe_data.name
-    ##Fit OLS linear model individual probe
-    model = sm.OLS(probe_data,phenotypes)
+    results = linregress(phenotypes, probe_data)
+
+    # add in confidence intervals
+    r_z_value = np.arctanh(results.rvalue)
+    z_score = norm.ppf(1-alpha/2)
+    # t_score = t.ppf(1-alpha/2, n_samples)
+    lo_z = r_z_value - (z_score * results.stderr)
+    hi_z = r_z_value + (z_score * results.stderr)
+    ci_lower, ci_upper = np.tanh((lo_z, hi_z))
+
+    probe_stats_row = pd.Series({
+        "Coefficient":results.rvalue, # pearson's correlation r (0 to 1.0) -- square it for r-squared
+        "StandardError":results.stderr,
+        "PValue":results.pvalue,
+        "95%CI_lower":ci_lower,
+        "95%CI_upper":ci_upper,
+    }, name=probe_ID)
+    """ the OLS function gave weird results, so switched to linregress in version 1.0.0
+    # adding the constant term: takes care of the bias in the data (a constant difference which is there for all observations).
+    phenotypes = sm.add_constant(phenotypes)
+    model = sm.OLS(probe_data, phenotypes, missing='drop')
     results = model.fit()
     probe_coef = results.params
-    probe_CI = results.conf_int(0.05)   ##returns the lower and upper bounds for the coefficient's 95% confidence interval
+    probe_CI = results.conf_int(alpha=0.05)   ##returns the lower and upper bounds for the coefficient's 95% confidence interval
     probe_SE = results.bse
     probe_pval = results.pvalues
+    # note -- results.summary() gives a nice report on each probe, but lots of text
     ##Fill in the corresponding row of the results dataframe with these values
-    probe_stats_row = pd.Series({"Coefficient":probe_coef[0],"StandardError":probe_SE[0],"PValue":probe_pval[0],"95%CI_lower":probe_CI[0][0],"95%CI_upper":probe_CI[1][0]},name=probe_ID)
+    probe_stats_row = pd.Series({"Coefficient":probe_coef[0], "StandardError":probe_SE[0], "PValue":probe_pval[0], "95%CI_lower":probe_CI[0][0], "95%CI_upper":probe_CI[1][0]}, name=probe_ID)
+    """
     return probe_stats_row
 
 
@@ -627,7 +666,7 @@ Returns:
         plt.close(fig)
 
 
-def manhattan_plot(stats_results, array_type, **kwargs):
+def manhattan_plot(stats_results, array_type, post_test='Bonferoni', **kwargs):
     """
 In EWAS Manhattan plots, epigenomic probe locations are displayed along the X-axis,
 with the negative logarithm of the association P-value for each single nucleotide polymorphism
@@ -674,9 +713,18 @@ visualization kwargs
       ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3',
       'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
     - `cutoff` -- threshold p-value for where to draw a line on the plot (default: 5x10^-8 on plot, or p<=0.05)
-        specify a number, such as 0.05.
-    - `label-prefix` -- how to refer to chromosomes. By default, it shows numbers 'CHR-' like CHR-1 .. CHR-22, X, and Y.
-        pass in '' to remove this from plots, or rename with 'c' like: c01 ... c22.
+        specify a number, such as 0.05. This cutoff is adjusted using a Bonferoni post_test correction, unless disabled.
+    - `label-prefix` -- how to refer to chromosomes. By default, it shows numbers like 1 ... 22, and X, Y.
+        pass in 'CHR-' to add a prefix to plot labels, or rename with 'c' like: c01 ... c22.
+    - `post_test`: Bonferoni correction
+        By default, a Bonferoni correction is applied after regression to control for alpha. This moves the
+        dotted significance line on the plot upward -- to a more conservative threshold than 0.05 -- to account
+        for multiple comparisons.
+
+        Multiple comparisons increases the chance of "seeing" a significant difference when one does not truly
+        exist, and DMP runs tens-of-thousands of comparisons across all probes. You may specify `post_test=None`
+        to keep the dotted line at 0.05 and NOT control for alpha.
+    - `FDR`: plot FDR_QValue instead of PValues on plot.
     """
     verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
     def_width = int(kwargs.get('width',16))
@@ -692,14 +740,18 @@ visualization kwargs
     if kwargs.get('palette') and kwargs.get('palette') not in color_schemes:
         print(f"WARNING: user supplied color palette {kwargs.get('palette')} is not a valid option! (Try: {list(color_schemes.keys())})")
     if kwargs.get('cutoff'):
-        pvalue_cutoff_y = -np.log10(float(kwargs.get('cutoff')))
+        alpha = float(kwargs.get('cutoff'))
     else:
-        pvalue_cutoff_y = -np.log10(0.05)
+        alpha = 0.05
+    pvalue_cutoff_y = -np.log10(alpha)
 
     df = stats_results
 
     # get -log_10(PValue)
     df['minuslog10pvalue'] = -np.log10(df.PValue)
+    if kwargs.get('FDR'):
+        df['minuslog10pvalue'] = -np.log10(df.FDR_QValue)
+
     # map probes to chromosome using an internal methylize lookup pickle, probe2chr.
     pre_length = len(df)
 
@@ -708,10 +760,11 @@ visualization kwargs
         raise ValueError(f"Specify your array_type as one of {array_types}; '{array_type.lower()}' was not recognized.")
     manifest = methylprep.Manifest(methylprep.ArrayType(array_type))
     probe2chr = create_probe_chr_map(manifest)
+    mapinfo_df = create_mapinfo(manifest)
 
     if kwargs.get('label_prefix') == None:
         # values are CHR-01, CHR-02, .. CHR-22, CHR-X... make 01, 02, .. 22 by default.
-        df['chromosome'] = df.index.map(lambda x: probe2chr.get(x))
+        df['chromosome'] = df.index.map(lambda x: probe2chr.get(x).replace('CHR-','') if probe2chr.get(x) else None)
     elif kwargs.get('label_prefix') != None:
         prefix = kwargs.get('label_prefix')
         df['chromosome'] = df.index.map(lambda x: probe2chr.get(x).replace('CHR-',prefix) if probe2chr.get(x) else None)
@@ -726,11 +779,12 @@ visualization kwargs
     # BELOW: causes an "x axis needs to be numeric" error.
     #df.chromosome = df.chromosome.astype('category')
     #df.chromosome = df.chromosome.cat.set_categories([i for i in range(0,23)], ordered=True)
+    df['MAPINFO']= mapinfo_df.loc[mapinfo_df.index.isin(df.index)][['MAPINFO']] # drop any manifest probes that aren't in stats
+    df = df.sort_values('MAPINFO')
     df = df.sort_values('chromosome')
-    #print(df.head())
 
     # How to plot gene vs. -log10(pvalue) and colour it by chromosome?
-    df['ind'] = range(len(df))
+    df['ind'] = range(len(df)) # adds an index column, separate from probe names
     df_grouped = df.groupby(('chromosome'))
     print('Total probes to plot:', len(df['ind']))
     # make the figure. set defaults first.
@@ -748,11 +802,15 @@ visualization kwargs
             group.plot(kind='scatter', x='ind', y='minuslog10pvalue', color=repeat_color, ax=ax)
             x_labels.append(name)
             x_labels_pos.append((group['ind'].iloc[-1] - (group['ind'].iloc[-1] - group['ind'].iloc[0])/2))
+            #print('DEBUG', num, name, group.shape)
         except ValueError as e:
             print(e)
+
+    if post_test == 'Bonferoni':
+        adjusted = multipletests(stats_results.PValue, alpha=alpha)
+        pvalue_cutoff_y = -np.log10(adjusted[3])
     # draw the p-value cutoff line
     xy_line = {'x':list(range(len(stats_results))), 'y': [pvalue_cutoff_y for i in range(len(stats_results))]}
-    #ax.plot(xy_line, 'k--', linewidth=5)
     df_line = pd.DataFrame(xy_line)
     df_line.plot(kind='line', x='x', y='y', color='grey', ax=ax, legend=False, style='--')
     if kwargs.get('cutoff'):
@@ -769,8 +827,9 @@ visualization kwargs
         ax.spines['right'].set_visible(False)
         ax.spines['bottom'].set_visible(False)
         ax.spines['left'].set_visible(False)
-    for tick in ax.get_xticklabels():
-        tick.set_rotation(45)
+    if kwargs.get('label_prefix') != None:
+        for tick in ax.get_xticklabels():
+            tick.set_rotation(45)
     if save:
         filename = kwargs.get('filename') if kwargs.get('filename') else f"manhattan_{len(stats_results)}_{str(datetime.date.today())}.png"
         plt.savefig(filename)
@@ -780,6 +839,39 @@ visualization kwargs
         plt.show()
     else:
         plt.close(fig)
+
+def probe_corr_plot(stats, group='sig', colorby='pval'):
+    """
+    - group='sig' is default (using PValue < 0.05)
+    - group='chromosome' also kinda works.
+    - colorby= pval or FDR; what to use to color the significant probes, if group='sig'
+    """
+    import matplotlib.pyplot as plt
+    temp = stats.sort_values('Coefficient') # puts uncorrelated probes in the middle
+    temp['x'] = range(len(temp.index))
+    fig,ax = plt.subplots(1,1, figsize=(12,8))
+    if colorby == 'pval':
+        temp['sig'] = temp.apply(lambda row: row['PValue'] < 0.05, axis=1)
+    elif colorby == 'FDR':
+        temp['sig'] = temp.apply(lambda row: row['FDR_QValue'] < 0.05, axis=1)
+    groups = temp.groupby(group)
+    if group == 'sig':
+        colors = {True:'tab:green', False:'tab:blue'}
+        for (label, _group) in groups:
+            ax.scatter(_group.x, _group.Coefficient, color=colors[label], s=3)
+    elif group == 'chromosome':
+        colors = color_schemes['default']
+        colors = list(colors.colors)
+        index = 0
+        for num, (label, _group) in enumerate(groups):
+            ind_sub = [index + i for i in range(len(_group))]
+            repeat_color = colors[num % len(colors)]
+            ax.scatter(ind_sub, _group['Coefficient'], color=repeat_color, s=3)
+            index += len(ind_sub)
+    ax.fill_between(temp['x'], temp['95%CI_lower'], temp['95%CI_upper'], color='gray', alpha=0.2)
+    ax.set_xlabel('probe index')
+    ax.set_ylabel('probe correlation between groups (r)')
+    plt.show()
 
 
 """
@@ -804,4 +896,18 @@ Returns:
     Writes a CSV file, but does not directly return an object.
     The CSV will include the DataFrame column names as headers and the index
     of the DataFrame as row names for each probe.
+"""
+
+
+
+"""
+def test():
+    import pandas as pd
+    import methylize
+    p64 = pd.read_pickle('Project_064_test/beta_values.pkl')
+    p64meta = [1,1,0,0,1,1,0,0]
+    stats = methylize.diff_meth_pos(p64.sample(100000), p64meta)
+    print(f"stats; sig probes: {(stats.FDR_QValue < 0.05).sum()} | {(stats.PValue < 0.05).sum()}")
+    methylize.manhattan_plot(stats, 'epic+')
+    return stats
 """
