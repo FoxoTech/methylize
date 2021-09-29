@@ -1,4 +1,5 @@
 import logging
+import math
 import numpy as np
 import pandas as pd
 import statsmodels.api as sm
@@ -353,7 +354,11 @@ Notes on imputation:
 
         ##Fit least squares regression to each probe of methylation data
             ##Parallelize across all available cores using joblib
-        func = delayed(linear_DMP_regression)
+        if kwargs.get('statsmodels_OLS'): # DEBUGGING
+            LOGGER.info("using statsmodels.OLS")
+            func = delayed(legacy_OLS)
+        else:
+            func = delayed(linear_DMP_regression)
         n_jobs = cpu_count()
         if kwargs.get('max_workers'):
             n_jobs = int(kwargs['max_workers'])
@@ -403,6 +408,30 @@ Notes on imputation:
     return probe_stats
 
 
+def legacy_OLS(probe_data, phenotypes, alpha=0.05):
+    """ to use this, specify "statsmodels_OLS" in kwargs to diff_meth_pos()
+    -- this method gives the same result as the scipy.linregress method when tested in version 1.0.0"""
+    probe_ID = probe_data.name
+    phenotypes = sm.add_constant(phenotypes)
+    results = sm.OLS(probe_data, phenotypes, hasconst=True).fit()
+    probe_coef = results.params.x1
+    #try:
+    #    probe_coef = math.log2(results.params.x1) # The linear coefficients that minimize the least squares criterion. Called Beta in the classical linear model.
+    #except:
+    #    probe_coef = 0 # math domain error
+    probe_CI = results.conf_int(0.05)
+    probe_SE = results.bse
+    probe_pval = results.f_pvalue # .pvalues are not for the fitted model
+    probe_stats_row = pd.Series({
+        "Coefficient":probe_coef,
+        "StandardError":probe_SE[0],
+        "PValue":probe_pval,
+        "95%CI_lower":probe_CI[0][0],
+        "95%CI_upper":probe_CI[1][0]},
+        name=probe_ID)
+    return probe_stats_row
+
+
 def linear_DMP_regression(probe_data, phenotypes, alpha=0.05):
     """
 This function performs a linear regression on a single probe's worth of methylation
@@ -442,11 +471,12 @@ Returns:
     ci_lower, ci_upper = np.tanh((lo_z, hi_z))
 
     probe_stats_row = pd.Series({
-        "Coefficient":results.rvalue, # pearson's correlation r (0 to 1.0) -- square it for r-squared
-        "StandardError":results.stderr,
+        "Coefficient": results.slope, #results.intercept,
+        "StandardError":results.stderr, # there's also results.intercept_stderr -- is this the right one?
         "PValue":results.pvalue,
         "95%CI_lower":ci_lower,
         "95%CI_upper":ci_upper,
+        "Rsquared": results.rvalue**2, # rvalue is pearson's correlation r (0 to 1.0) -- square it for r-squared
     }, name=probe_ID)
     """ the OLS function gave weird results, so switched to linregress in version 1.0.0
     # adding the constant term: takes care of the bias in the data (a constant difference which is there for all observations).
@@ -638,7 +668,7 @@ Returns:
     ax = fig.add_axes([0, 0, 1, 1])
     plt.scatter(stats_results.Coefficient,
         -np.log10(stats_results.FDR_QValue),
-        c=palette ,
+        c=palette,
         s=def_dot_size)
     #plt.ylabel("-log10 (FDR Adjusted Q Value)")
     ax.set_ylabel("-log10 (FDR Adjusted Q Value)")
