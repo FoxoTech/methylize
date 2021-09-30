@@ -30,7 +30,6 @@ jobs:
             pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
             pipenv run coverage report
             pipenv run coverage html
-            pipenv run coverage xml
             pipenv run coveralls
             # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
             # pipenv run coverage run --omit '*tests*','*/home/*' setup.py test

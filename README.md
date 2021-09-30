@@ -1,7 +1,6 @@
 `methylize` is a python package for analyzing output from Illumina methylation arrays. It complements `methylprep` and `methylcheck`. View on [ReadTheDocs.](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/)
 
-[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylize/badge/?version=latest)](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv)  [![CircleCI](https://circleci.com/gh/FOXOBioScience/methylize.svg?style=shield&circle-token=6a80b317c9e581e0969cdc73cc3233b3c70b9dbd)](https://circleci.com/gh/FOXOBioScience/methylize)  [![Codacy Badge](https://api.codacy.com/project/badge/Grade/36c282629145444facdd2d96b4462afa)](https://www.codacy.com?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FOXOBioScience/methylize&amp;utm_campaign=Badge_Grade)
-[![Coverage Status](https://coveralls.io/repos/github/FOXOBioScience/methylize/badge.svg?t=uf7qX4)](https://coveralls.io/github/FOXOBioScience/methylize)
+[![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylize/badge/?version=latest)](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv) [![CircleCI](https://circleci.com/gh/FoxoTech/methylize/tree/master.svg?style=shield)](https://circleci.com/gh/FoxoTech/methylize/tree/master) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/099d26465bd64c2387afa063810a13e6)](https://www.codacy.com/gh/FoxoTech/methylize/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FOXOBioScience/methylize&amp;utm_campaign=Badge_Grade) [![Coverage Status](https://coveralls.io/repos/github/FoxoTech/methylize/badge.svg?t=uf7qX4)](https://coveralls.io/github/FOXOBioScience/methylize)
 
 1. [Overview](README.md)
 2. [Demonstrating differentially methylated probe (DMP) detection (volcano plot) and mapping to chrosomes (manhattan plot)](docs/demo_diff_meth_pos.ipynb)
@@ -14,12 +13,12 @@ The `methylize` package contains both high-level APIs for processing data from l
 `Methylize` allows you to run linear or logistic regression on all probes and identify points of interest in the methylome where DNA is differentially modified. Then you can use these regression results to create *volcano plots* and *manhattan plots*.
 
 ### Sample Manhattan Plot
-![Manhattan Plot](https://github.com/FOXOBioScience/methylize/blob/master/docs/manhattan_example.png?raw=true)
+![Manhattan Plot](https://github.com/FoxoTech/methylize/blob/master/docs/manhattan_example.png?raw=true)
 
-![Manhattan Plot (alternate coloring)](https://github.com/FOXOBioScience/methylize/blob/master/docs/manhattan_example2.png?raw=true)
+![Manhattan Plot (alternate coloring)](https://github.com/FoxoTech/methylize/blob/master/docs/manhattan_example2.png?raw=true)
 
 ### Sample Volcano Plot
-![Volcano Plot](https://github.com/FOXOBioScience/methylize/blob/master/docs/volcano_example.png?raw=true)
+![Volcano Plot](https://github.com/FoxoTech/methylize/blob/master/docs/volcano_example.png?raw=true)
 
 Customizable: Plot size, color palette, and cutoff p-value lines can be set by the user.
 Exporting: You can export all probe statistics, or just the significant probes as CSV or python pickled DataFrame.

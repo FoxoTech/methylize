@@ -1,11 +1,21 @@
 # Release History
 
 ## v1.0.0
-- Support for including/excluding sex chromosomes from DMP (probe2chr map)
 - Added differentially methylated regions (DMR) functions, alongside diff-meth-pos(ition) DMP functions.
-    - DMP maps differences to chromosomes; DMR maps differences to specific genomic locii, and requires more processing.
-    - upgraded methylprep manifests to support both old and new genomic build mappings for all array types.
-    - Illumina 27k arrays are still not supported, but mouse, epic, epic+, and 450k ARE supported.
+  - DMP maps differences to chromosomes; DMR maps differences to specific genomic locii, and requires more processing.
+  - upgraded methylprep manifests to support both old and new genomic build mappings for all array types.
+  - Illumina 27k arrays are still not supported, but mouse, epic, epic+, and 450k ARE supported.
+
+## v0.9.8
+- fixed methylize diff_meth_pos linear regression. upgraded features too
+  - Fixed bug in diff_meth_pos using linear regression - was not calculating p-values correctly.
+      Switched from statsmodels OLS to scipy linregress to fix, but you can use either one with kwargs.
+      They appear to give exactly the same results now after testing.
+  - The "CHR-" prefix is omitted from manhattan plots by default now
+  - dotted manhattan sig line is Bonferoni corrected (pass in post_test=None to leave uncorrected)
+  - added a probe_corr_plot() undocumented function, a scatterplot of probe confidence intervals vs pvalue
+  - sorts probes by MAPINFO (chromosome location) instead of FDR_QValue on manhattan plots now
+- Support for including/excluding sex chromosomes from DMP (probe2chr map)
 
 ## v0.9.5
 - Added imputation to diff_meth_pos() function, because methylprep output contains missing values
