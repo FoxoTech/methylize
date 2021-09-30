@@ -13,6 +13,42 @@ meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
 
 class TestInit():
 
+
+    @patch("matplotlib.pyplot.show")
+    def test_all_manifests_load_with_genomic_info(self, mock):
+        """Also tests all probe2chr mapping options, for all arrays."""
+        import methylprep
+        expected_columns = list(methylprep.files.manifests.MANIFEST_COLUMNS) + ['probe_type']
+        expected_columns.remove('IlmnID')
+        mouse_columns = list(methylprep.files.manifests.MOUSE_MANIFEST_COLUMNS) + ['probe_type']
+        mouse_columns.remove('IlmnID')
+        for this_array_type in ['450k', 'epic', 'epic+']:
+            man = methylprep.Manifest(methylprep.ArrayType(this_array_type))
+            found = set(man.data_frame.columns)
+            if found != set(expected_columns):
+                raise AssertionError("manifest columns don't match expected columns, defined in methylprep.files.manifests.py")
+            probe_map = methylize.helpers.create_probe_chr_map(man, 'CHR', include_sex=True)
+            df = pd.DataFrame.from_dict(probe_map, orient='index')
+            print(f"{this_array_type} CHR include_sex")
+            print(df.value_counts())
+            probe_map = methylize.helpers.create_probe_chr_map(man, 'OLD_CHR', include_sex=False)
+            df = pd.DataFrame.from_dict(probe_map, orient='index')
+            print(f"{this_array_type} OLD_CHR exclude_sex")
+            print(df.value_counts())
+        man = methylprep.Manifest(methylprep.ArrayType('mouse'))
+        found = set(man.data_frame.columns)
+        if found != set(mouse_columns):
+            raise AssertionError("manifest columns don't match expected columns, defined in methylprep.files.manifests.py")
+        probe_map = methylize.helpers.create_probe_chr_map(man, 'CHR', include_sex=False)
+        df = pd.DataFrame.from_dict(probe_map, orient='index')
+        print(f"{this_array_type} CHR exclude_sex")
+        print(df.value_counts())
+        probe_map = methylize.helpers.create_probe_chr_map(man, 'OLD_CHR', include_sex=True)
+        df = pd.DataFrame.from_dict(probe_map, orient='index')
+        print(f"{this_array_type} OLD_CHR include_sex")
+        print(df.value_counts())
+
+
     def test_is_interactive(self):
         from methylize.diff_meth_pos import is_interactive
         if is_interactive() == False:

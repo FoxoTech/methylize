@@ -30,7 +30,7 @@ def load_probe_chr_map():
     #        probe2map = pickle.load(f)
         # structure is dataframe with 'CGidentifier, CHR, MAPINFO' columns -- bumphunter uses MAPINFO (chromosome position of probes)
     # dict for volcano plots, with a sortable order for chart
-    probe2map['CHR'] = probe2map['CHR'].apply(lambda i: f"CHR-0{i}" if i not in ('X','Y') and type(i) is str and int(i) < 10 else f"CHR-{i}")
+    probe2map['CHR'] = probe2map['CHR'].apply(lambda i: f"CHR-0{i}" if str(i).isdigit() and int(i) < 10 else f"CHR-{i}")
     probe2map = probe2map[ ~probe2map.CHR.isna() ] # drops control probes or any not linked to a chromosome
     probe2chr = dict(zip(probe2map.CGidentifier, probe2map.CHR)) # computationally fasted conversion method
     # OLD v0.9.3
@@ -38,13 +38,34 @@ def load_probe_chr_map():
     #probe2chr = {probe['CGidentifier']:f"CHR-0{probe['CHR']}" if probe['CHR'] not in ('X','Y') and type(probe['CHR']) is str and int(probe['CHR']) < 10 else f"CHR-{probe['CHR']}" for probe in probes}
     #OLD pre v0.9: probe2chr = {k:f"CH-0{v}" if v not in ('X','Y') and type(v) is str and int(v) < 10 else f"CH-{v}" for k,v in probes.items()}
 
-def create_probe_chr_map(manifest):
-    """ convert a manifest.data_frame into a dictionary that maps probe_ids to chromosomes, for manhattan plots. """
-    probe2map = manifest.data_frame[['CHR','MAPINFO']]
-    probe2map = probe2map[ ~(probe2map['CHR'].isin(['*','M'])) ] # mouse manifest has '*' where should be NA, omitting these.
-    probe2map = probe2map[ ~probe2map.CHR.isna() ] # drops control probes or any not linked to a chromosome
-    probe2map['CHR'] = probe2map['CHR'].copy().apply(lambda i: f"CHR-0{i}" if i not in ('X','Y') and type(i) is str and int(i) < 10 else f"CHR-{i}")
-    probe2chr = dict(zip(probe2map.index, probe2map.CHR)) # computationally fasted conversion method
+def create_mapinfo(manifest, use='MAPINFO', include_sex=True):
+    """ convert a manifest.data_frame into a dictionary that maps probe_ids to chromosomes, for manhattan plots.
+    use: CHR or OLD_CHR to toggle which genome build to use from manifest."""
+    sex_chromosomes = ['X','Y']
+    probe2map = manifest.data_frame[[use, 'CHR']]
+    probe2map = probe2map[ ~probe2map[use].isna() ] # drops control probes or any not linked to a chromosome
+    if include_sex:
+        probe2map = probe2map[ (probe2map['CHR'].str.isdigit() | probe2map['CHR'].isin(['X','Y'])) ] #manifests have 'X,Y,M,*' omitting these.
+    else:
+        probe2map = probe2map[ probe2map['CHR'].str.isdigit() ] #manifests have 'X,Y,M,*' omitting these.
+    probe2map[use] = probe2map[use].apply(lambda i: f"CHR-0{i}" if str(i).isdigit() and int(i) < 10 else f"CHR-{i}")
+    #probe2chr = dict(zip(probe2map.index, probe2map[use])) # computationally fastest conversion method
+    return probe2map # dataframe with CHR and MAPINFO columns and probe_names in index.
+
+def create_probe_chr_map(manifest, use='CHR', include_sex=True):
+    """ convert a manifest.data_frame into a dictionary that maps probe_ids to chromosomes, for manhattan plots.
+    use: CHR or OLD_CHR to toggle which genome build to use from manifest."""
+    sex_chromosomes = ['X','Y']
+    probe2map = manifest.data_frame[[use]]
+    probe2map = probe2map[ ~probe2map[use].isna() ] # drops control probes or any not linked to a chromosome
+    #other_map = probe2map[ ~probe2map[use].str.isdigit() ]
+    if include_sex:
+        probe2map = probe2map[ (probe2map[use].str.isdigit() | probe2map[use].isin(['X','Y'])) ] #manifests have 'X,Y,M,*' omitting these.
+    else:
+        probe2map = probe2map[ probe2map[use].str.isdigit() ] #manifests have 'X,Y,M,*' omitting these.
+    probe2map[use] = probe2map[use].apply(lambda i: f"CHR-0{i}" if str(i).isdigit() and int(i) < 10 else f"CHR-{i}")
+    #probe2map['CHR'] = probe2map['CHR'].copy().apply(lambda i: f"CHR-0{i}" if i not in ('X','Y') and type(i) is str and int(i) < 10 else f"CHR-{i}")
+    probe2chr = dict(zip(probe2map.index, probe2map[use])) # computationally fastest conversion method
     return probe2chr
 
 
