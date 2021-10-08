@@ -169,7 +169,11 @@ Notes on imputation:
     # Check that meth_data has probes in colummns, and transpose if necessary.
     if meth_data.shape[1] < 27000 and meth_data.shape[0] > 27000:
         meth_data = meth_data.transpose()
-        print(f"Warning: meth_data was transposed: {meth_data.shape}")
+        LOGGER.debug(f"Your meth_data was transposed: {meth_data.shape}")
+    # for case where meth has <27000 probes and only the OTHER axis matches phenotype length.
+    if len(pheno_data) != meth_data.shape[0] and len(pheno_data) == meth_data.shape[1]:
+        meth_data = meth_data.transpose()
+        LOGGER.debug(f"Your meth_data was transposed: {meth_data.shape}")
 
     # Check for missing values, and impute if necessary
     if any(meth_data.isna().sum()):
@@ -216,8 +220,8 @@ Notes on imputation:
     elif isinstance(pheno_data, pd.DataFrame):
         raise ValueError("You must specify a column by name when passing in a DataFrame for pheno_data.")
 
-    # Check that the methylation and phenotype data correspond to the same number of samples
-    if len(pheno_data) != meth_data.shape[0]:
+    # Check that the methylation and phenotype data correspond to the same number of samples; flip if necessary
+    if len(pheno_data) != meth_data.shape[0] and len(pheno_data) != meth_data.shape[1]:
         raise ValueError(f"Methylation data and phenotypes must have the same number of samples; found {len(meth_data)} meth and {len(pheno_data)} pheno.")
 
     ##Extract column names corresponding to all probes to set row indices for results
@@ -696,7 +700,7 @@ Returns:
         plt.close(fig)
 
 
-def manhattan_plot(stats_results, array_type, post_test='Bonferoni', **kwargs):
+def manhattan_plot(stats_results, array_type, post_test='Bonferoni', fdr=True, **kwargs):
     """
 In EWAS Manhattan plots, epigenomic probe locations are displayed along the X-axis,
 with the negative logarithm of the association P-value for each single nucleotide polymorphism
@@ -750,6 +754,7 @@ visualization kwargs
         By default, a Bonferoni correction is applied after regression to control for alpha. This moves the
         dotted significance line on the plot upward -- to a more conservative threshold than 0.05 -- to account
         for multiple comparisons.
+    - `ymax` -- default: 50. Avoid plotting extremely high -10log(p) values.
 
         Multiple comparisons increases the chance of "seeing" a significant difference when one does not truly
         exist, and DMP runs tens-of-thousands of comparisons across all probes. You may specify `post_test=None`
@@ -773,22 +778,37 @@ visualization kwargs
         alpha = float(kwargs.get('cutoff'))
     else:
         alpha = 0.05
+    ymax = kwargs.get('ymax',50)
     pvalue_cutoff_y = -np.log10(alpha)
 
     df = stats_results
 
-    # get -log_10(PValue)
-    df['minuslog10pvalue'] = -np.log10(df.PValue)
-    if kwargs.get('FDR'):
-        df['minuslog10pvalue'] = -np.log10(df.FDR_QValue)
+    if 'FDR_QValue' not in df.columns and 'PValue' not in df.columns:
+        raise KeyError(f"stats dataframe muste ither have a `FDR_QValue` or `PValue` column.")
+    if kwargs.get('FDR') and 'FDR_QValue' not in df.columns:
+        LOGGER.warning("FDR specified but no `FDR_QValue` column in stats data. Using PValue instead.")
+    # get -log_10(PValue) -- but set any p 0.000 to the highest value found, to avoid NaN/inf
+    if kwargs.get('FDR') and 'FDR_QValue' in df.columns:
+        NL = -np.log10(df.FDR_QValue)
+    else:
+        NL = -np.log10(df.PValue)
+    NL[NL == np.inf] = -1
+    NL[NL == -1] = min(np.argmax(NL),ymax) # replacing inf; capping at ymax (100)
+    df['minuslog10pvalue'] = NL
+
 
     # map probes to chromosome using an internal methylize lookup pickle, probe2chr.
     pre_length = len(df)
 
     array_types = {'450k', 'epic', 'mouse', '27k', 'epic+'}
-    if array_type.lower() not in array_types:
-        raise ValueError(f"Specify your array_type as one of {array_types}; '{array_type.lower()}' was not recognized.")
-    manifest = methylprep.Manifest(methylprep.ArrayType(array_type))
+    if isinstance(array_type, methylprep.Manifest):
+        manifest = array_type # faster to pass manifest in, if doing a lot of plots
+        array_type = str(manifest.array_type)
+    elif array_type.lower() not in array_types:
+            raise ValueError(f"Specify your array_type as one of {array_types}; '{array_type.lower()}' was not recognized.")
+    else:
+        manifest = methylprep.Manifest(methylprep.ArrayType(array_type))
+
     probe2chr = create_probe_chr_map(manifest)
     mapinfo_df = create_mapinfo(manifest)
 
@@ -839,6 +859,7 @@ visualization kwargs
     if post_test == 'Bonferoni':
         adjusted = multipletests(stats_results.PValue, alpha=alpha)
         pvalue_cutoff_y = -np.log10(adjusted[3])
+        print('DEBUG Bonferoni',adjusted)
     # draw the p-value cutoff line
     xy_line = {'x':list(range(len(stats_results))), 'y': [pvalue_cutoff_y for i in range(len(stats_results))]}
     df_line = pd.DataFrame(xy_line)
@@ -848,7 +869,7 @@ visualization kwargs
     ax.set_xticks(x_labels_pos)
     ax.set_xticklabels(x_labels)
     ax.set_xlim([0, len(df)])
-    ax.set_ylim([0, max(df['minuslog10pvalue']) + 0.2 * max(df['minuslog10pvalue'])])
+    ax.set_ylim([0, max(df['minuslog10pvalue']) + 0.01 * max(df['minuslog10pvalue'])])
     ax.set_xlabel('Chromosome')
     ax.set_ylabel('-log(p-value)')
     # hide the border; unnecessary

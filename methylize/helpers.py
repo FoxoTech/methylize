@@ -87,7 +87,7 @@ def load_color_schemes():
 load_color_schemes()
 
 
-def map_to_genome(df, rgset):
+def to_genome(df, rgset):
     """__deprecated__ Maps dataframe to genome locations
     Parameters
     ----------
@@ -121,3 +121,90 @@ def map_to_genome(df, rgset):
     else:
         print("No 'Name' column in dataframe.")
         return
+
+def to_BED(stats, manifest_or_array_type, save=True, filename='', genome_build=None, columns=None):
+    """Converts & exports manifest and probe p-value dataframe to BED format.
+    - https://en.wikipedia.org/wiki/BED_(file_format)
+    - BED format: [ chromosome number | start position | end position | p-values]
+    Where p-values are the output from diff_meth_pos() comparing probes across two or more
+    groups of samples for genomic differences in methylation.
+
+    This output is required for combined-pvalues library to read and annotate manhattan plots
+    with the nearest Gene(s) for each significant CpG cluster.
+
+    manifest_or_array_type:
+        either pass in a Manifest instance from methylprep, or a string that defines which
+        manifest to load. One of {'27k', '450k', 'epic', 'epic+', 'mouse'}.
+    genome_build:
+        pass in 'OLD' to use the older genome build for each respective manifest array type.
+
+    note: if manifest has probes that aren't mapped to genome, they are omitted in BED file.
+
+    TODO: incorporate STRAND and OLD_STRAND in calculations.
+
+    returns a BED formatted dataframe if save is False, or the saved filename if save is True.
+    """
+    array_types = {'27k', '450k', 'epic', 'epic+', 'mouse'}
+    manifest = None
+    if isinstance(manifest_or_array_type, str) and manifest_or_array_type not in array_types:
+        raise ValueError(f"Specify array type as one of: {array_types}")
+    if isinstance(manifest_or_array_type, str) and manifest_or_array_type in array_types:
+        import methylprep
+        manifest = methylprep.Manifest(methylprep.ArrayType(manifest_or_array_type))
+    if not manifest and hasattr(manifest_or_array_type, 'data_frame'):
+        manifest = manifest_or_array_type
+    if not manifest:
+        raise ValueError("Either provide a manifest or specify array_type.")
+    if not isinstance(stats, pd.DataFrame):
+        raise TypeError("stats should be a dataframe with either a PValue or a FDR_QValue column")
+    if not isinstance(manifest.data_frame, pd.DataFrame):
+        raise AttributeError("Expected manifest_or_array_type to be a methylprep manifest with a data_frame attribute but this does not have one.")
+    if "FDR_QValue" in stats:
+        pval = stats['FDR_QValue']
+    elif "PValue" in stats:
+        pval = stats['PValue']
+    else:
+        raise IndexError("stats did not contain either a PValue or a FDR_QValue column.")
+
+    # an unfinished, internal undocumented way to change the column names, if exactly 5 columns in list provided in same order.
+    if columns is None:
+        columns = ['chrom','chromStart','chromEnd','pvalue','name']
+        renamer = {}
+    else:
+        renamer = dict(zip(['chrom','chromStart','chromEnd','pvalue','name'],columns))
+
+    pval = pval.rename("pvalue")
+    genes = manifest_gene_map(manifest, genome_build='NEW')
+    # finally, inner join and save/return the combined BED data frame.
+    BED = pd.merge(genes[['chrom','chromStart','chromEnd']], pval, left_index=True, right_index=True, how='inner')
+    BED = BED.sort_values(['chrom','chromStart'], ascending=True)
+    BED = BED.reset_index().rename(columns={'index':'name'})
+    BED = BED[['chrom','chromStart','chromEnd','pvalue','name']] # order matters, so be explicit
+    # omit unmapped CpGs
+    unmapped = len(BED[ BED['chromStart'].isna() ])
+    BED = BED[ ~BED['chromStart'].isna() ]
+    if renamer != {}:
+        BED = BED.rename(columns=renamer)
+    # cpv / combined-pvalues needs a tab-separated .bed file
+    timestamp = int(time.time())
+    if save:
+        if filename:
+            BED.to_csv(f"{filename}.bed", index=False, sep='\t')
+            return f"{filename}.bed"
+        else:
+            BED.to_csv(f"{timestamp}.bed", index=False, sep='\t')
+            return f"{timestamp}.bed"
+    return BED
+
+def manifest_gene_map(manifest, genome_build='NEW'):
+    """returns 3 columns from manifest for chromosome/gene mapping. Used in >2 functions.
+    genome_build: NEW or OLD"""
+    ## sort probes by CHR,MAPINFO
+    genome_prefix = 'OLD_' if genome_build == 'OLD' else '' # defaults to NEW, no prefix
+    if genome_prefix+'MAPINFO' not in manifest.data_frame.columns:
+        raise IndexError(f"{genome_prefix+'MAPINFO'} not in manifest")
+    genes = manifest.data_frame[[genome_prefix+'CHR', genome_prefix+'MAPINFO']] # Strand and Genome_Build also available, but not needed.
+    genes = genes.rename(columns={genome_prefix+'MAPINFO': 'chromStart', genome_prefix+'CHR': 'chrom'}) # standardize, regardless of genome build used
+    genes = genes.astype({'chromStart':float})
+    genes['chromEnd'] = genes['chromStart'] + 50 # all probes are 50 base pairs long. Ignoring that strand might affect the direction that each probe extends within genome for now. test then fix.
+    return genes

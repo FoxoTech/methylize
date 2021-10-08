@@ -42,6 +42,8 @@ setup(
         'matplotlib',
         'methylprep',
         'methylcheck',
+        'git+git://github.com/brentp/combined-pvalues.git@v0.50.6',
+        'cruzdb',        
     ],
     setup_requires=['pytest-runner'],
     tests_require=['pytest'],
