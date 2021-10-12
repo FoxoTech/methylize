@@ -5,8 +5,9 @@ import statsmodels.api as sm
 from statsmodels.stats.multitest import multipletests
 #from scipy import stats --- conflicts with input param names
 #from joblib import Parallel, delayed, cpu_count
-import matplotlib.pyplot as plt
 import matplotlib # color maps and changing Agg backend after cpv alters it.
+default_backend = matplotlib.get_backend()
+import matplotlib.pyplot as plt
 import methylprep
 import methylcheck
 # from cpv.pipeline import pipeline -- copied and modified here
@@ -37,6 +38,7 @@ import toolshed as ts
 # app
 from .helpers import color_schemes, create_probe_chr_map, create_mapinfo, to_BED, manifest_gene_map
 from .diff_meth_pos import manhattan_plot
+from .genome_browser import fetch_genes
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.INFO)
@@ -89,19 +91,21 @@ display/output options:
 -----------------------
 verbose: bool -- default False
     Display additional processing information on screen.
-p: str
-    prefix for output files
+prefix: str
+    prefix that gets appended to all output files (e.g. 'dmr' becomes 'dmr_regions.csv')
 region_filter_p:
     max adjusted region-level p-value in final output.
 region_filter_n:
     req at least this many probes in a region
-annotate:
-    label with genes from an external database (e.g. hg19 from cruzdb)
-table:
-    annotate with refGene
+annotate: bool
+    annotate with fetch_genes() function that uses UCSC refGene database to add "nearby" genes to
+    differentially methylated regions in the output CSV. If you want to fine-tune the reference database,
+    the tolerance of what "nearby" means, and other parameters, set this to false and call `methylize.fetch_genes`
+    as a separate step on the '..._regions.csv' output file.
 
-  .. TODO::
-  is not "aware" of NEW vs OLD genome builds being used.
+.. TODO::
+   genome_build
+   It is not "aware" of NEW vs OLD genome builds being used. Always uses the newest one.
     """
     kw = {
         'col_num': 3, # chrom | start | end | pvalue | name
@@ -114,7 +118,8 @@ table:
     kw.update(kwargs)
 
     #TODO use genome_build too
-    bed_file = to_BED(stats, manifest_or_array_type, save=True, filename=kwargs.get('filename','stats'), columns=['chrom' ,'start', 'end', 'pvalue', 'name'])
+    bed_filename = f"{kwargs.get('prefix','')}_dmp_stats"
+    bed_file = to_BED(stats, manifest_or_array_type, save=True, filename=bed_filename, columns=['chrom' ,'start', 'end', 'pvalue', 'name'])
 
     kw['bed_files'] = [bed_file]
     if not kw.get('prefix'):
@@ -132,7 +137,7 @@ table:
             kw['seed'], kw['table'], kw['bed_files'],
             region_filter_p = kw.get('region_filter_p',1),
             region_filter_n = kw.get('region_filter_n'),
-            genome_control=False, db=True, use_fdr=not kw.get('no_fdr',False),
+            genome_control=False, use_fdr=not kw.get('no_fdr',False),
             log_to_file=True, verbose=kw.get('verbose',False))
         LOGGER.info(results)
     except SystemExit as e:
@@ -187,21 +192,28 @@ table:
     files_created.remove(_deleted)
     files_created.append(_added)
     # switch from `Agg` to interactive; but diff OSes work with diff ones, and the best ones are not default installed.
-    interactive_backends = ['Qt5Agg', 'MacOSX', 'TkAgg', 'ipympl', 'GTK3Agg', 'GTK3Cairo', 'nbAgg', 'Qt5Cairo','TkCairo']
-    if in_notebook():
-        try:
-            matplotlib.use('ipympl')
-        except:
-            pass
-    for backend in interactive_backends:
-        try:
-            matplotlib.use(backend)
-        except:
-            continue
+    interactive_backends = ['TkAgg', 'Qt5Agg', 'MacOSX', 'ipympl', 'GTK3Agg', 'GTK3Cairo', 'nbAgg', 'Qt5Cairo','TkCairo']
+    try:
+        matplotlib.switch_backend(default_backend)
+    except:
+        if in_notebook():
+            try:
+                matplotlib.switch_backend('ipympl')
+            except:
+                pass
+        for backend in interactive_backends:
+            try:
+                matplotlib.switch_backend(backend)
+            except:
+                continue
 
-    manhattan_cols = {'region-p':'PValue', '#chrom':'chromosome', 'start': 'MAPINFO'}
-    _fdr_ = pd.read_csv(kw['prefix'] + '.fdr.bed.gz', sep='\t').rename(columns=manhattan_cols).set_index('name')
-    manhattan_plot(_fdr_, manifest)
+    try:
+        manhattan_cols = {'region-p':'PValue', '#chrom':'chromosome', 'start': 'MAPINFO'}
+        _fdr_ = pd.read_csv(kw['prefix'] + '.fdr.bed.gz', sep='\t').rename(columns=manhattan_cols).set_index('name')
+        manhattan_plot(_fdr_, manifest)
+    except Exception as e:
+        if kw.get('verbose',False) == True:
+            LOGGER.error("Could not produce the manhattan plot: {e}")
 
     if stats_series != {}:
         # problem: manifest is unique but FDR/SLK, so need to look up
@@ -219,40 +231,22 @@ table:
         stats_file = f"{kw.get('prefix','')}_stats.csv"
         stats_df.to_csv(stats_file)
         files_created.append(stats_file)
+
+    # cruzdb is python2x only, and hasn't been maintained since 2014. So we wrote our own UCSC interface function: fetch_genes
+    regions_stats_file = Path(f"{kw.get('prefix','')}_regions.csv")
+    if kw.get('annotate',True) == True and regions_stats_file.exists():
+        final_results = fetch_genes(regions_stats_file)
+        files_created.append(f"{kw.get('prefix','')}_regions_genes.csv")
+    elif kw.get('annotate',True) == True:
+        LOGGER.error(f"Could not annotate; no regions.csv file found")
+    files_created.append(bed_file)
     return files_created
-
-def qqplot(lpys, ax_qq):
-    lunif = -np.log10(np.arange(1, len(lpys) + 1) / float(len(lpys)))[::-1]
-    ax_qq.plot(lunif, np.sort(lpys), marker=',', linestyle='none', c='#EA352B')
-    ax_qq.set_xticks([])
-    ax_qq.plot(lunif, lunif, ls='--', c='#959899')
-    ax_qq.set_xlabel('')
-    ax_qq.set_ylabel('')
-    ax_qq.set_yticks([])
-    ax_qq.axis('tight')
-    ax_qq.axes.set_frame_on(True)
-
-def read_regions(fregions):
-    """Reads a BED file (tab separated CSV with chrom, start, end) and returns a lookup
-    dict of chromosomes and their cpg regions"""
-    if not fregions: return None
-    df = pd.read_csv(fregions, sep='\t').rename(columns={'#chrom': 'chrom'})
-    if set(df.columns) & set(['chrom','chromStart','chromEnd']) != set(['chrom','chromStart','chromEnd']):
-        raise KeyError(f"BED columns should include ['chrom','chromStart','chromEnd']; found {set(df.columns)}")
-    regions = {k:[] for k in df['chrom'].unique()} # split by chromosome into a list of (start,end) tuples
-    #for idx,row in df.iterrows():
-    #    regions[row['chrom']].append((int(row['chromStart']), int(row['chromEnd'])))
-    chromosomes = df.groupby('chrom')
-    for chromosome_number, chromosome in chromosomes:
-        pairs = list(chromosome.apply(lambda x: (x['chromStart'], x['chromEnd']), axis=1) )
-        regions[chromosome_number] = pairs
-    return regions
-
 
 
 def pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
         bed_files, mlog=True, region_filter_p=1, region_filter_n=None,
-        genome_control=False, db=None, use_fdr=True, log_to_file=True, verbose=False):
+        genome_control=False, use_fdr=True, log_to_file=True, verbose=False):
+    """adapted from combined-pvalues (cpv) pipeline to work outside of CLI."""
     # a hack to ensure local files can be imported
     # sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
     from cpv import acf, slk, fdr, peaks, region_p, stepsize, filter
@@ -369,8 +363,11 @@ def pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
     #if all(h in header for h in ('t', 'start', 'end')):
     if region_filter_n is None:
         region_filter_n = 0
+    if not Path(f"{prefix}.regions-p.bed.gz").exists():
+        LOGGER.warning("No clustered CpG regions found (that differ between your sample groups).")
 
     """ NEXT function filter.filter() requires bedtools installed, and only works on macos/linux.
+    -- combines regions from multiple datasets, I think.
     with ts.nopen(prefix + ".regions-t.bed", "w") as fh:
         N = 0
         for i, toks in enumerate(filter.filter(bed_files[0], regions_bed, p_col_name=col_num)):
@@ -397,16 +394,35 @@ def pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
         prefix.rstrip(".") + ".manhattan.png",
         False, ['#959899', '#484B4C'], "", False, None,
         regions=regions, bonferonni=False)
-
-    """ cruzdb is python2x only, and hasn't been maintained since 2014.
-    if db is not None:
-        from cruzdb import Genome
-        g = Genome(db)
-        lastf = fh.name
-        with open(prefix + ".anno.%s.bed" % db, "w") as fh:
-            fh.write('#')
-            g.annotate(lastf, (table, "cpgIslandExt"), out=fh,
-                    feature_strand=True, parallel=len(spvals) > 500)
-        print("wrote: %s annotated with %s %s" % (fh.name, db, table), file=sys.stderr)
-    """
     return
+
+
+def read_regions(fregions):
+    """Reads a BED file (tab separated CSV with chrom, start, end) and returns a lookup
+    dict of chromosomes and their cpg regions"""
+    if not fregions: return None
+    df = pd.read_csv(fregions, sep='\t').rename(columns={'#chrom': 'chrom'})
+    if set(df.columns) & set(['chrom','chromStart','chromEnd']) != set(['chrom','chromStart','chromEnd']):
+        raise KeyError(f"BED columns should include ['chrom','chromStart','chromEnd']; found {set(df.columns)}")
+    regions = {k:[] for k in df['chrom'].unique()} # split by chromosome into a list of (start,end) tuples
+    #for idx,row in df.iterrows():
+    #    regions[row['chrom']].append((int(row['chromStart']), int(row['chromEnd'])))
+    chromosomes = df.groupby('chrom')
+    for chromosome_number, chromosome in chromosomes:
+        pairs = list(chromosome.apply(lambda x: (x['chromStart'], x['chromEnd']), axis=1) )
+        regions[chromosome_number] = pairs
+    return regions
+
+
+""" NOT USED
+def qqplot(lpys, ax_qq):
+    lunif = -np.log10(np.arange(1, len(lpys) + 1) / float(len(lpys)))[::-1]
+    ax_qq.plot(lunif, np.sort(lpys), marker=',', linestyle='none', c='#EA352B')
+    ax_qq.set_xticks([])
+    ax_qq.plot(lunif, lunif, ls='--', c='#959899')
+    ax_qq.set_xlabel('')
+    ax_qq.set_ylabel('')
+    ax_qq.set_yticks([])
+    ax_qq.axis('tight')
+    ax_qq.axes.set_frame_on(True)
+"""

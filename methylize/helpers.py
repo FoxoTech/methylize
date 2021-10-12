@@ -188,12 +188,14 @@ def to_BED(stats, manifest_or_array_type, save=True, filename='', genome_build=N
     # cpv / combined-pvalues needs a tab-separated .bed file
     timestamp = int(time.time())
     if save:
-        if filename:
-            BED.to_csv(f"{filename}.bed", index=False, sep='\t')
-            return f"{filename}.bed"
-        else:
+        if isinstance(filename, type(None)):
             BED.to_csv(f"{timestamp}.bed", index=False, sep='\t')
             return f"{timestamp}.bed"
+        if not isinstance(filename, Path):
+            filename = f"{filename}.bed"
+        # otherwise, use as is, assuming it is a complete path/filename
+        BED.to_csv(filename, index=False, sep='\t')
+        return filename
     return BED
 
 def manifest_gene_map(manifest, genome_build='NEW'):

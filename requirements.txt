@@ -14,5 +14,6 @@ nbsphinx
 tqdm
 methylprep
 git+git://github.com/brentp/combined-pvalues.git@v0.50.6 # cpv on pypi won't install but this will
-cruzdb # gene annotation for DMR
+# cruzdb # gene annotation for DMR
 # pybedtools # swiss army knife for genomic algebra -- requires linux/macos and brew bedtools
+pymysql
