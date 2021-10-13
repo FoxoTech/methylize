@@ -43,6 +43,7 @@ setup(
         'methylprep',
         'methylcheck',
         'git+git://github.com/brentp/combined-pvalues.git@v0.50.6',
+        'cpv @ git+https://github.com/brentp/combined-pvalues.git@v0.50.6#egg=cpv',
         'pymysql',
     ],
     setup_requires=['pytest-runner'],
