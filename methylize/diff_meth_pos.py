@@ -819,11 +819,13 @@ visualization kwargs
         prefix = kwargs.get('label_prefix')
         df['chromosome'] = df.index.map(lambda x: probe2chr.get(x).replace('CHR-',prefix) if probe2chr.get(x) else None)
 
+    NaNs = 0
     if len(df[df['chromosome'].isna() == True]) > 0:
-        print('NaNs:', len(df[df['chromosome'].isna() == True]))
+        NaNs = len(df[df['chromosome'].isna() == True])
+        print(f"{NaNs} NaNs dropped")
         df.dropna(subset=['chromosome'], inplace=True)
     # in the case that probes are not in the lookup, this will drop those probes from the chart and warn user.
-    if len(df) < pre_length and verbose:
+    if (len(df) + NaNs) < pre_length and verbose:
         print(f"Warning: {pre_length - len(df)} probes were removed because their names don't match methylize's lookup list")
 
     # BELOW: causes an "x axis needs to be numeric" error.
@@ -857,19 +859,18 @@ visualization kwargs
             print(e)
 
     if post_test == 'Bonferoni':
+        prev_pvalue_cutoff_y = pvalue_cutoff_y
         adjusted = multipletests(stats_results.PValue, alpha=alpha)
         pvalue_cutoff_y = -np.log10(adjusted[3])
-        print('DEBUG Bonferoni',adjusted)
+        print(f"DEBUG: {prev_pvalue_cutoff_y} ==[ Bonferoni ]==> {pvalue_cutoff_y}")
     # draw the p-value cutoff line
     xy_line = {'x':list(range(len(stats_results))), 'y': [pvalue_cutoff_y for i in range(len(stats_results))]}
     df_line = pd.DataFrame(xy_line)
-    df_line.plot(kind='line', x='x', y='y', color='grey', ax=ax, legend=False, style='--')
-    if kwargs.get('cutoff'):
-        print(f"p-value line: {pvalue_cutoff_y}")
     ax.set_xticks(x_labels_pos)
     ax.set_xticklabels(x_labels)
     ax.set_xlim([0, len(df)])
-    ax.set_ylim([0, max(df['minuslog10pvalue']) + 0.01 * max(df['minuslog10pvalue'])])
+    highest_value = max(df['minuslog10pvalue']) if pvalue_cutoff_y < max(df['minuslog10pvalue']) else pvalue_cutoff_y
+    ax.set_ylim([0, highest_value + 0.01 * highest_value])
     ax.set_xlabel('Chromosome')
     ax.set_ylabel('-log(p-value)')
     # hide the border; unnecessary
@@ -881,6 +882,7 @@ visualization kwargs
     if kwargs.get('label_prefix') != None:
         for tick in ax.get_xticklabels():
             tick.set_rotation(45)
+    df_line.plot(kind='line', x='x', y='y', color='grey', ax=ax, legend=False, style='--')
     if save:
         filename = kwargs.get('filename') if kwargs.get('filename') else f"manhattan_{len(stats_results)}_{str(datetime.date.today())}.png"
         plt.savefig(filename)
@@ -891,7 +893,7 @@ visualization kwargs
     else:
         plt.close(fig)
 
-def probe_corr_plot(stats, group='sig', colorby='pval'):
+def probe_corr_plot(stats, group='sig', colorby='pval'): # pragma: no cover
     """
     - group='sig' is default (using PValue < 0.05)
     - group='chromosome' also kinda works.

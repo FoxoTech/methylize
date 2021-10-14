@@ -14,8 +14,8 @@ meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
 class TestInit():
 
 
-    @patch("matplotlib.pyplot.show")
-    def test_all_manifests_load_with_genomic_info(self, mock):
+    #@patch("matplotlib.pyplot.show")
+    def test_all_manifests_load_with_genomic_info(self): #, mock):
         """Also tests all probe2chr mapping options, for all arrays."""
         import methylprep
         expected_columns = list(methylprep.files.manifests.MANIFEST_COLUMNS) + ['probe_type']
@@ -79,7 +79,7 @@ class TestInit():
     @patch("matplotlib.pyplot.show")
     def test_manhattan(self, mock):
         test_results= self.test_diff_meth_pos_logistic()
-        methylize.manhattan_plot(test_results, '450k', cutoff=0.01, palette='Gray3', save=False)
+        methylize.manhattan_plot(test_results, '450k') #, cutoff=0.01, palette='Gray3', save=False)
 
     @patch("matplotlib.pyplot.show")
     def test_volcano(self, mock):
@@ -225,4 +225,13 @@ def test4(): # this never returns any stats
     pheno_data = ['bob','sue','bob','sue','bob','sue']
     ms = pd.read_pickle('mouse_beta_values.pkl')
     return methylize.diff_meth_pos(ms.transpose().sample(50000,axis=1), pheno_data, regression_method='logistic', impute=True)
+
+import methylize
+import pandas as pd
+ms = pd.read_pickle('data/mouse_beta_values.pkl')
+pheno_data = [3,5,7,9,11,13]
+test_results = methylize.diff_meth_pos(ms, pheno_data)
+methylize.manhattan_plot(test_results, 'mouse')
+
+#ms.transpose().sample(10000,axis=1), pheno_data, regression_method='linear', impute=True)
 '''
