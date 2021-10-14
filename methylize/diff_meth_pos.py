@@ -169,7 +169,11 @@ Notes on imputation:
     # Check that meth_data has probes in colummns, and transpose if necessary.
     if meth_data.shape[1] < 27000 and meth_data.shape[0] > 27000:
         meth_data = meth_data.transpose()
-        print(f"Warning: meth_data was transposed: {meth_data.shape}")
+        LOGGER.debug(f"Your meth_data was transposed: {meth_data.shape}")
+    # for case where meth has <27000 probes and only the OTHER axis matches phenotype length.
+    if len(pheno_data) != meth_data.shape[0] and len(pheno_data) == meth_data.shape[1]:
+        meth_data = meth_data.transpose()
+        LOGGER.debug(f"Your meth_data was transposed: {meth_data.shape}")
 
     # Check for missing values, and impute if necessary
     if any(meth_data.isna().sum()):
@@ -216,8 +220,8 @@ Notes on imputation:
     elif isinstance(pheno_data, pd.DataFrame):
         raise ValueError("You must specify a column by name when passing in a DataFrame for pheno_data.")
 
-    # Check that the methylation and phenotype data correspond to the same number of samples
-    if len(pheno_data) != meth_data.shape[0]:
+    # Check that the methylation and phenotype data correspond to the same number of samples; flip if necessary
+    if len(pheno_data) != meth_data.shape[0] and len(pheno_data) != meth_data.shape[1]:
         raise ValueError(f"Methylation data and phenotypes must have the same number of samples; found {len(meth_data)} meth and {len(pheno_data)} pheno.")
 
     ##Extract column names corresponding to all probes to set row indices for results
@@ -696,7 +700,7 @@ Returns:
         plt.close(fig)
 
 
-def manhattan_plot(stats_results, array_type, post_test='Bonferoni', **kwargs):
+def manhattan_plot(stats_results, array_type, post_test='Bonferoni', fdr=True, **kwargs):
     """
 In EWAS Manhattan plots, epigenomic probe locations are displayed along the X-axis,
 with the negative logarithm of the association P-value for each single nucleotide polymorphism
@@ -728,13 +732,14 @@ output kwargs
         specify that it export an image in `png` format.
         By default, the function only displays a plot.
     filename:
-        specify an export filename. default is `volcano_<current_date>.png`.
+        specify an export filename. The default is `f"manhattan_<stats>_<timestamp>.png"`.
 
 
 visualization kwargs
 ====================
 
     - `verbose` (True/False) - default is True, verbose messages, if omitted.
+    - `genome_build` -- NEW or OLD. Default is NEWest genome_build.
     - `width` -- figure width -- default is 16
     - `height` -- figure height -- default is 8
     - `fontsize` -- figure font size -- default 16
@@ -750,6 +755,7 @@ visualization kwargs
         By default, a Bonferoni correction is applied after regression to control for alpha. This moves the
         dotted significance line on the plot upward -- to a more conservative threshold than 0.05 -- to account
         for multiple comparisons.
+    - `ymax` -- default: 50. Avoid plotting extremely high -10log(p) values.
 
         Multiple comparisons increases the chance of "seeing" a significant difference when one does not truly
         exist, and DMP runs tens-of-thousands of comparisons across all probes. You may specify `post_test=None`
@@ -773,24 +779,38 @@ visualization kwargs
         alpha = float(kwargs.get('cutoff'))
     else:
         alpha = 0.05
+    ymax = kwargs.get('ymax',50)
     pvalue_cutoff_y = -np.log10(alpha)
 
     df = stats_results
 
-    # get -log_10(PValue)
-    df['minuslog10pvalue'] = -np.log10(df.PValue)
-    if kwargs.get('FDR'):
-        df['minuslog10pvalue'] = -np.log10(df.FDR_QValue)
+    if 'FDR_QValue' not in df.columns and 'PValue' not in df.columns:
+        raise KeyError(f"stats dataframe muste ither have a `FDR_QValue` or `PValue` column.")
+    if kwargs.get('FDR') and 'FDR_QValue' not in df.columns:
+        LOGGER.warning("FDR specified but no `FDR_QValue` column in stats data. Using PValue instead.")
+    # get -log_10(PValue) -- but set any p 0.000 to the highest value found, to avoid NaN/inf
+    if kwargs.get('FDR') and 'FDR_QValue' in df.columns:
+        NL = -np.log10(df.FDR_QValue)
+    else:
+        NL = -np.log10(df.PValue)
+    NL[NL == np.inf] = -1
+    NL[NL == -1] = min(np.argmax(NL),ymax) # replacing inf; capping at ymax (100)
+    df['minuslog10pvalue'] = NL
 
     # map probes to chromosome using an internal methylize lookup pickle, probe2chr.
     pre_length = len(df)
 
     array_types = {'450k', 'epic', 'mouse', '27k', 'epic+'}
-    if array_type.lower() not in array_types:
-        raise ValueError(f"Specify your array_type as one of {array_types}; '{array_type.lower()}' was not recognized.")
-    manifest = methylprep.Manifest(methylprep.ArrayType(array_type))
-    probe2chr = create_probe_chr_map(manifest)
-    mapinfo_df = create_mapinfo(manifest)
+    if isinstance(array_type, methylprep.Manifest):
+        manifest = array_type # faster to pass manifest in, if doing a lot of plots
+        array_type = str(manifest.array_type)
+    elif array_type.lower() not in array_types:
+            raise ValueError(f"Specify your array_type as one of {array_types}; '{array_type.lower()}' was not recognized.")
+    else:
+        manifest = methylprep.Manifest(methylprep.ArrayType(array_type))
+
+    probe2chr = create_probe_chr_map(manifest, genome_build=kwargs.get('genome_build',None))
+    mapinfo_df = create_mapinfo(manifest, genome_build=kwargs.get('genome_build',None))
 
     if kwargs.get('label_prefix') == None:
         # values are CHR-01, CHR-02, .. CHR-22, CHR-X... make 01, 02, .. 22 by default.
@@ -799,11 +819,13 @@ visualization kwargs
         prefix = kwargs.get('label_prefix')
         df['chromosome'] = df.index.map(lambda x: probe2chr.get(x).replace('CHR-',prefix) if probe2chr.get(x) else None)
 
+    NaNs = 0
     if len(df[df['chromosome'].isna() == True]) > 0:
-        print('NaNs:', len(df[df['chromosome'].isna() == True]))
+        NaNs = len(df[df['chromosome'].isna() == True])
+        print(f"{NaNs} NaNs dropped")
         df.dropna(subset=['chromosome'], inplace=True)
     # in the case that probes are not in the lookup, this will drop those probes from the chart and warn user.
-    if len(df) < pre_length and verbose:
+    if (len(df) + NaNs) < pre_length and verbose:
         print(f"Warning: {pre_length - len(df)} probes were removed because their names don't match methylize's lookup list")
 
     # BELOW: causes an "x axis needs to be numeric" error.
@@ -837,18 +859,18 @@ visualization kwargs
             print(e)
 
     if post_test == 'Bonferoni':
+        prev_pvalue_cutoff_y = pvalue_cutoff_y
         adjusted = multipletests(stats_results.PValue, alpha=alpha)
         pvalue_cutoff_y = -np.log10(adjusted[3])
+        print(f"DEBUG: {prev_pvalue_cutoff_y} ==[ Bonferoni ]==> {pvalue_cutoff_y}")
     # draw the p-value cutoff line
     xy_line = {'x':list(range(len(stats_results))), 'y': [pvalue_cutoff_y for i in range(len(stats_results))]}
     df_line = pd.DataFrame(xy_line)
-    df_line.plot(kind='line', x='x', y='y', color='grey', ax=ax, legend=False, style='--')
-    if kwargs.get('cutoff'):
-        print(f"p-value line: {pvalue_cutoff_y}")
     ax.set_xticks(x_labels_pos)
     ax.set_xticklabels(x_labels)
     ax.set_xlim([0, len(df)])
-    ax.set_ylim([0, max(df['minuslog10pvalue']) + 0.2 * max(df['minuslog10pvalue'])])
+    highest_value = max(df['minuslog10pvalue']) if pvalue_cutoff_y < max(df['minuslog10pvalue']) else pvalue_cutoff_y
+    ax.set_ylim([0, highest_value + 0.01 * highest_value])
     ax.set_xlabel('Chromosome')
     ax.set_ylabel('-log(p-value)')
     # hide the border; unnecessary
@@ -860,6 +882,7 @@ visualization kwargs
     if kwargs.get('label_prefix') != None:
         for tick in ax.get_xticklabels():
             tick.set_rotation(45)
+    df_line.plot(kind='line', x='x', y='y', color='grey', ax=ax, legend=False, style='--')
     if save:
         filename = kwargs.get('filename') if kwargs.get('filename') else f"manhattan_{len(stats_results)}_{str(datetime.date.today())}.png"
         plt.savefig(filename)
@@ -870,7 +893,7 @@ visualization kwargs
     else:
         plt.close(fig)
 
-def probe_corr_plot(stats, group='sig', colorby='pval'):
+def probe_corr_plot(stats, group='sig', colorby='pval'): # pragma: no cover
     """
     - group='sig' is default (using PValue < 0.05)
     - group='chromosome' also kinda works.

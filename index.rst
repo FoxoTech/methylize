@@ -1,6 +1,5 @@
-
-Documentation for methylize
-===========================
+methylize documentation
+=======================
 
 ---------------
 Getting Started
@@ -9,15 +8,15 @@ Getting Started
 .. mdinclude:: README.md
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
-  docs/demo_diff_meth_pos.ipynb
-  docs/filtering_probes_with_dmp.ipynb
-  docs/bumphunter
-  docs/source/modules.rst
-  methylprep package <https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/>
-  methylcheck package <https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/>
+   docs/demo_diff_meth_pos.ipynb
+   docs/filtering_probes_with_dmp.ipynb
+   docs/source/modules
+   methylprep package <https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/>
+   methylcheck package <https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/>
+   Release History <docs/release-history.md>
 
 Indices and tables
 ==================
