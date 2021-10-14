@@ -112,7 +112,7 @@ tissue: str
     """
     kw = {
         'col_num': 3, # chrom | start | end | pvalue | name
-        'step': 50,
+        'step': None, # comb-p default is 50, but this will auto-calc
         'dist': 80,
         'seed': 0.05,
         'table': 'refGene',
@@ -235,8 +235,8 @@ tissue: str
         stats_df = pd.concat(list(stats_series.values()), axis=1)
         try:
             stats_df = stats_df.merge(chr_start_end, left_index=True, right_index=True)
-        except:
-            LOGGER.error('Could not includes chrom | chromStart | chromEnd in stats file.')
+        except Exception as e:
+            LOGGER.error(f'Could not include chrom | chromStart | chromEnd in stats file: {e}')
         stats_file = f"{kw.get('prefix','')}_stats.csv"
         stats_df.to_csv(stats_file)
         files_created.append(stats_file)
@@ -404,22 +404,6 @@ def pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
         regions=regions, bonferonni=False)
     return {"result": "OK"}
 
-
-def read_regions(fregions):
-    """Reads a BED file (tab separated CSV with chrom, start, end) and returns a lookup
-    dict of chromosomes and their cpg regions"""
-    if not fregions: return None
-    df = pd.read_csv(fregions, sep='\t').rename(columns={'#chrom': 'chrom'})
-    if set(df.columns) & set(['chrom','chromStart','chromEnd']) != set(['chrom','chromStart','chromEnd']):
-        raise KeyError(f"BED columns should include ['chrom','chromStart','chromEnd']; found {set(df.columns)}")
-    regions = {k:[] for k in df['chrom'].unique()} # split by chromosome into a list of (start,end) tuples
-    #for idx,row in df.iterrows():
-    #    regions[row['chrom']].append((int(row['chromStart']), int(row['chromEnd'])))
-    chromosomes = df.groupby('chrom')
-    for chromosome_number, chromosome in chromosomes:
-        pairs = list(chromosome.apply(lambda x: (x['chromStart'], x['chromEnd']), axis=1) )
-        regions[chromosome_number] = pairs
-    return regions
 
 
 """ NOT USED

@@ -43,6 +43,15 @@ def test_diff_meth_regions_default():
         raise FileNotFoundError(f"These output files were not found / path missing: {failures}")
 
 def test_diff_meth_positions_no_regions_found():
+    """ also covers:
+    [x] passing in manifest
+    [x] step None (auto calc)
+    [x] verbose True
+    [x] genome control True
+    cannot test
+    - passing in no prefix
+    - notebook environment
+    """
     test_folder = 'epic_plus'
     if not Path('docs','example_data', test_folder).exists():
         Path('docs','example_data', test_folder).mkdir()
@@ -50,8 +59,11 @@ def test_diff_meth_positions_no_regions_found():
     sample = pd.read_pickle(Path('docs','example_data','test_sample_betas_epicplus_30k.pkl'))
     pheno = [1,1,0,0,1,1,0,0]
     stats = methylize.diff_meth_pos(sample, pheno, verbose=False)
-    manifest_or_array_type = 'epic+'
-    files_created = methylize.diff_meth_regions(stats, manifest_or_array_type, prefix='docs/example_data/epic_plus/epic_plus')
+    #manifest_or_array_type = 'epic+'
+    import methylprep
+    man = methylprep.Manifest(methlprep.ArrayType('epic+'))
+    files_created = methylize.diff_meth_regions(stats, manifest_or_array_type=man, prefix='docs/example_data/epic_plus/epic_plus',
+        genome_control=True)
     print(files_created)
     failures = []
     # regions file gets deleted in middle of processing when no regions are found.

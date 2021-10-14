@@ -28,7 +28,7 @@ table_mapper = {
 }
 conn = None
 def fetch_genes(dmr_regions_file=None, tol=250, ref=None, tissue=None, sql=None,
-     use_cached=True, save=True, verbose=False,
+     save=True, verbose=False, use_cached=True, no_sync=False,
      host=HOST, user=USER, password='', db=DB):
     f"""find genes that are adjacent to significantly different CpG regions provided.
 
@@ -75,12 +75,16 @@ tissue: str
 use_cached:
     If True, the first time it downloads a dataset from UCSC Genome Browser, it will save to disk
     and use that local copy thereafter. To force it to use the online copy, set to False.
+no_sync:
+    methylize ships with a copy of the relevant UCSC gene browser tables, and will auto-update these
+    every month. If you want to run this function without accessing this database, you can avoid updating
+    using the `no_sync=True` kwarg.
+host, user, password, db:
+    Internal database connections for UCSC server. You would only need to mess with these of the server domain changes
+    from the current hardcoded value {HOST}. Necessary for tables to be updated and for `tissue` annotation.
 sql:
     a DEBUG mode that bypasses the function and directly queries the database for any information the user wants.
     Be sure to specify the complete SQL statement, including the ref-table (e.g. refGene or ncbiRefSeq).
-host, user, password, db:
-    Internal database connections for UCSC server. You would only need to mess with these of the server domain changes
-    from the current hardcoded value {HOST}
 
  .. note::
     This method flushes cache periodically. After 30 days, it deletes cached reference gene tables and re-downloads.
@@ -97,62 +101,67 @@ host, user, password, db:
         LOGGER.info(f"Loaded {regions.shape[0]} CpG regions from {dmr_regions_file}.")
     if not ref:
         ref = possible_tables[0] # refGene
-    global conn
-    if conn is None:
+
+    global conn # allows function to reuse the same connection
+    if conn is None and no_sync is False:
         conn = pymysql.connect(host=host, user=user, password=password, db=db, cursorclass=pymysql.cursors.DictCursor)
-    with conn.cursor() as cur:
-        if sql:
+
+    if sql:
+        with conn.cursor() as cur:
             cur.execute(sql)
             return list(cur.fetchall())
-        # these will be packed into the output CSV saved, but a nested dataframe is returned.
-        matches = {i:[] for i in regions.name} # cpg name --> [gene names]
-        distances = {i:[] for i in regions.name}
-        descriptions = {i:[] for i in regions.name}
-        # fetch WHOLE table needed, unless using cache
-        package_path = Path(__file__).parent
-        cache_file = Path(package_path, 'data', f"{ref}.pkl")
-        cache_available = cache_file.exists()
-        # don't use cache if over 1 month old:
-        if use_cached and cache_available:
-            last_download = cache_file.stat().st_ctime
-            if time.time() - last_download > 2629746:
-                LOGGER.info(f"Cached genome table is over 1 month old; re-downloading from UCSC.")
-                cache_file.unlink()
-                cache_available = False
-        if use_cached and cache_available:
-            genes = pd.read_pickle(cache_file)
-            LOGGER.info(f"""Using cached `{ref}`: {Path(package_path, 'data', f"{ref}.pkl")} with ({len(genes)}) genes""")
-        else: # download it
-            LOGGER.info(f"Downloading {ref}")
-            # chrom, txStart, txEnd; all 3 tables have name, but knownGene lacks a name2.
-            if ref == 'knownGene':
-                sql = f"""SELECT name as name2, txStart, txEnd, description FROM {ref} LEFT JOIN kgXref ON kgXref.kgID = {ref}.name;"""
-            else:
-                sql = f"""SELECT name, name2, txStart, txEnd, description FROM {ref} LEFT JOIN kgXref ON kgXref.refseq = {ref}.name;"""
+
+    # these will be packed into the output CSV saved, but a nested dataframe is returned.
+    matches = {i:[] for i in regions.name} # cpg name --> [gene names]
+    distances = {i:[] for i in regions.name}
+    descriptions = {i:[] for i in regions.name}
+    # fetch WHOLE table needed, unless using cache
+    package_path = Path(__file__).parent
+    cache_file = Path(package_path, 'data', f"{ref}.pkl")
+    cache_available = cache_file.exists()
+    # don't use cache if over 1 month old:
+    if use_cached and cache_available and no_sync is False:
+        last_download = cache_file.stat().st_ctime
+        if time.time() - last_download > 2629746:
+            LOGGER.info(f"Cached genome table is over 1 month old; re-downloading from UCSC.")
+            cache_file.unlink()
+            cache_available = False
+    if use_cached and cache_available:
+        genes = pd.read_pickle(cache_file)
+        LOGGER.info(f"""Using cached `{ref}`: {Path(package_path, 'data', f"{ref}.pkl")} with ({len(genes)}) genes""")
+    elif no_sync is False: # download it
+        LOGGER.info(f"Downloading {ref}")
+        # chrom, txStart, txEnd; all 3 tables have name, but knownGene lacks a name2.
+        if ref == 'knownGene':
+            sql = f"""SELECT name as name2, txStart, txEnd, description FROM {ref} LEFT JOIN kgXref ON kgXref.kgID = {ref}.name;"""
+        else:
+            sql = f"""SELECT name, name2, txStart, txEnd, description FROM {ref} LEFT JOIN kgXref ON kgXref.refseq = {ref}.name;"""
+        with conn.cursor() as cur:
             cur.execute(sql)
             genes = list(cur.fetchall())
-            if use_cached:
-                import pickle
-                with open(Path(package_path, 'data', f"{ref}.pkl"),'wb') as f:
-                    pickle.dump(genes, f)
-                    LOGGER.info(f"Cached {Path(package_path, 'data', f'{ref}.pkl')} on first use, with {len(genes)} genes")
-            else:
-                LOGGER.info(f"Using {ref} with {len(genes)} genes")
-        # compare two dataframes and calc diff.
-        # need to loop here: but prob some matrix way of doing this faster
-        done = 0
-        for gene in tqdm(genes, total=len(genes), desc="Mapping genes"):
-            closeby = regions[ abs(regions.chromStart - gene['txStart']) < tol ]
-            if len(closeby) > 0:
-                for idx,item in closeby.iterrows():
-                    matches[item['name']].append(gene['name2'])
-                    dist = item['chromStart'] - gene['txStart']
-                    distances[item['name']].append(dist)
-                    desc = gene['description'].decode('utf8') if gene['description'] != None else ''
-                    descriptions[item['name']].append(desc)
-                    done += 1
-                    #if done % 1000 == 0:
-                    #    LOGGER.info(f"[{done} matches]")
+        if use_cached:
+            import pickle
+            with open(Path(package_path, 'data', f"{ref}.pkl"),'wb') as f:
+                pickle.dump(genes, f)
+                LOGGER.info(f"Cached {Path(package_path, 'data', f'{ref}.pkl')} on first use, with {len(genes)} genes")
+        else:
+            LOGGER.info(f"Using {ref} with {len(genes)} genes")
+    # compare two dataframes and calc diff.
+    # need to loop here: but prob some matrix way of doing this faster
+    done = 0
+    for gene in tqdm(genes, total=len(genes), desc="Mapping genes"):
+        closeby = regions[ abs(regions.chromStart - gene['txStart']) < tol ]
+        if len(closeby) > 0:
+            for idx,item in closeby.iterrows():
+                matches[item['name']].append(gene['name2'])
+                dist = item['chromStart'] - gene['txStart']
+                distances[item['name']].append(dist)
+                desc = gene['description'].decode('utf8') if gene['description'] != None else ''
+                descriptions[item['name']].append(desc)
+                done += 1
+                #if done % 1000 == 0:
+                #    LOGGER.info(f"[{done} matches]")
+
     # also, remove duplicate gene matches for the same region (it happens a lot)
     matches = {k: ','.join(set(v)) for k,v in matches.items()}
     distances = {k: ','.join(set([str(j) for j in v])) for k,v in distances.items()}
