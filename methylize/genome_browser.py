@@ -28,7 +28,7 @@ table_mapper = {
 }
 conn = None
 def fetch_genes(dmr_regions_file=None, tol=250, ref=None, tissue=None, sql=None,
-     save=True, verbose=False, use_cached=True, no_sync=False,
+     save=True, verbose=False, use_cached=True, no_sync=False, genome_build=None,
      host=HOST, user=USER, password='', db=DB):
     f"""find genes that are adjacent to significantly different CpG regions provided.
 
@@ -72,6 +72,9 @@ tissue: str
     if specified, adds additional columns to output with the expression levels for identified genes
     in any/all tissue(s) that match the keyword. (e.g. if your methylation samples are whole blood,
     specify `tissue=blood`) For all 54 tissues, use `tissue=all`
+genome_build: (None, NEW, OLD)
+    Only the default human genome build, hg38, is currently supported. Even though many other builds are available
+    in the UCSC database, most tables do not join together in the same way.
 use_cached:
     If True, the first time it downloads a dataset from UCSC Genome Browser, it will save to disk
     and use that local copy thereafter. To force it to use the online copy, set to False.
@@ -184,6 +187,9 @@ sql:
         tissues = fetch_genes(sql="select * from hgFixed.gtexTissueV8;")
         sorted_tissues = [i['name'] for i in tissues]
         gene_names = [i.split(',') for i in list(regions['genes']) if i != '']
+        N_regions_with_multiple_genes = len([i for i in gene_names if len(i) > 1])
+        if N_regions_with_multiple_genes > 0:
+            LOGGER.warning(f"{N_regions_with_multiple_genes} of the {len(gene_names)} regions have multiple genes matching in the same region, and output won't show tissue expression levels.")
         gene_names = tuple([item for sublist in gene_names for item in sublist])
         gtex = fetch_genes(sql=f"select name, expScores from gtexGeneV8 WHERE name in {gene_names} and score > 0;")
         if len(gtex) > 0:

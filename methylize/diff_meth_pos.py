@@ -732,13 +732,14 @@ output kwargs
         specify that it export an image in `png` format.
         By default, the function only displays a plot.
     filename:
-        specify an export filename. default is `volcano_<current_date>.png`.
+        specify an export filename. The default is `f"manhattan_<stats>_<timestamp>.png"`.
 
 
 visualization kwargs
 ====================
 
     - `verbose` (True/False) - default is True, verbose messages, if omitted.
+    - `genome_build` -- NEW or OLD. Default is NEWest genome_build.
     - `width` -- figure width -- default is 16
     - `height` -- figure height -- default is 8
     - `fontsize` -- figure font size -- default 16
@@ -809,8 +810,8 @@ visualization kwargs
     else:
         manifest = methylprep.Manifest(methylprep.ArrayType(array_type))
 
-    probe2chr = create_probe_chr_map(manifest)
-    mapinfo_df = create_mapinfo(manifest)
+    probe2chr = create_probe_chr_map(manifest, genome_build=kwargs.get('genome_build',None))
+    mapinfo_df = create_mapinfo(manifest, genome_build=kwargs.get('genome_build',None))
 
     if kwargs.get('label_prefix') == None:
         # values are CHR-01, CHR-02, .. CHR-22, CHR-X... make 01, 02, .. 22 by default.

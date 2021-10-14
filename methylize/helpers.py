@@ -38,29 +38,34 @@ def load_probe_chr_map():
     #probe2chr = {probe['CGidentifier']:f"CHR-0{probe['CHR']}" if probe['CHR'] not in ('X','Y') and type(probe['CHR']) is str and int(probe['CHR']) < 10 else f"CHR-{probe['CHR']}" for probe in probes}
     #OLD pre v0.9: probe2chr = {k:f"CH-0{v}" if v not in ('X','Y') and type(v) is str and int(v) < 10 else f"CH-{v}" for k,v in probes.items()}
 
-def create_mapinfo(manifest, use='MAPINFO', include_sex=True):
+def create_mapinfo(manifest, genome_build=None, include_sex=True):
     """ convert a manifest.data_frame into a dictionary that maps probe_ids to chromosomes, for manhattan plots.
-    use: CHR or OLD_CHR to toggle which genome build to use from manifest."""
+    - genome_build: use NEW or OLD to toggle which genome build to use from manifest.
+    - only used by manhattan_plot()"""
+    mapinfo = 'OLD_MAPINFO' if genome_build == 'OLD' else 'MAPINFO'
+    chr = 'OLD_CHR' if genome_build == 'OLD' else 'CHR'
     sex_chromosomes = ['X','Y']
-    probe2map = manifest.data_frame[[use, 'CHR']]
-    probe2map = probe2map[ ~probe2map[use].isna() ] # drops control probes or any not linked to a chromosome
+    probe2map = manifest.data_frame[[mapinfo, chr]]
+    probe2map = probe2map[ ~probe2map[mapinfo].isna() ] # drops control probes or any not linked to a chromosome
     if include_sex:
-        probe2map = probe2map[ (probe2map['CHR'].str.isdigit() | probe2map['CHR'].isin(['X','Y'])) ] #manifests have 'X,Y,M,*' omitting these.
+        probe2map = probe2map[ (probe2map[chr].str.isdigit() | probe2map[chr].isin(sex_chromosomes)) ] #manifests have 'X,Y,M,*' omitting these.
     else:
-        probe2map = probe2map[ probe2map['CHR'].str.isdigit() ] #manifests have 'X,Y,M,*' omitting these.
-    probe2map[use] = probe2map[use].apply(lambda i: f"CHR-0{i}" if str(i).isdigit() and int(i) < 10 else f"CHR-{i}")
+        probe2map = probe2map[ probe2map[chr].str.isdigit() ] #manifests have 'X,Y,M,*' omitting these.
+    probe2map[mapinfo] = probe2map[mapinfo].apply(lambda i: f"CHR-0{i}" if str(i).isdigit() and int(i) < 10 else f"CHR-{i}")
     #probe2chr = dict(zip(probe2map.index, probe2map[use])) # computationally fastest conversion method
     return probe2map # dataframe with CHR and MAPINFO columns and probe_names in index.
 
-def create_probe_chr_map(manifest, use='CHR', include_sex=True):
+def create_probe_chr_map(manifest, genome_build=None, include_sex=True):
     """ convert a manifest.data_frame into a dictionary that maps probe_ids to chromosomes, for manhattan plots.
-    use: CHR or OLD_CHR to toggle which genome build to use from manifest."""
+    - genome_build: use NEW or OLD to toggle which genome build to use from manifest.
+    - only used by manhattan_plot()"""
     sex_chromosomes = ['X','Y']
+    use = 'OLD_CHR' if genome_build == 'OLD' else 'CHR'
     probe2map = manifest.data_frame[[use]]
     probe2map = probe2map[ ~probe2map[use].isna() ] # drops control probes or any not linked to a chromosome
     #other_map = probe2map[ ~probe2map[use].str.isdigit() ]
     if include_sex:
-        probe2map = probe2map[ (probe2map[use].str.isdigit() | probe2map[use].isin(['X','Y'])) ] #manifests have 'X,Y,M,*' omitting these.
+        probe2map = probe2map[ (probe2map[use].str.isdigit() | probe2map[use].isin(sex_chromosomes)) ] #manifests have 'X,Y,M,*' omitting these.
     else:
         probe2map = probe2map[ probe2map[use].str.isdigit() ] #manifests have 'X,Y,M,*' omitting these.
     probe2map[use] = probe2map[use].apply(lambda i: f"CHR-0{i}" if str(i).isdigit() and int(i) < 10 else f"CHR-{i}")
@@ -87,7 +92,7 @@ def load_color_schemes():
 load_color_schemes()
 
 
-def to_genome(df, rgset):
+def to_genome(df, rgset): # pragma: no cover
     """__deprecated__ Maps dataframe to genome locations
     Parameters
     ----------
@@ -174,7 +179,7 @@ def to_BED(stats, manifest_or_array_type, save=True, filename='', genome_build=N
         renamer = dict(zip(['chrom','chromStart','chromEnd','pvalue','name'],columns))
 
     pval = pval.rename("pvalue")
-    genes = manifest_gene_map(manifest, genome_build='NEW')
+    genes = manifest_gene_map(manifest, genome_build=genome_build)
     # finally, inner join and save/return the combined BED data frame.
     BED = pd.merge(genes[['chrom','chromStart','chromEnd']], pval, left_index=True, right_index=True, how='inner')
     BED = BED.sort_values(['chrom','chromStart'], ascending=True)

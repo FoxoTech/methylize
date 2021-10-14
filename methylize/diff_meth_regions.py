@@ -36,7 +36,7 @@ except NameError:
 import toolshed as ts
 
 # app
-from .helpers import color_schemes, create_probe_chr_map, create_mapinfo, to_BED, manifest_gene_map
+from .helpers import color_schemes, to_BED, manifest_gene_map
 from .diff_meth_pos import manhattan_plot
 from .genome_browser import fetch_genes
 
@@ -65,10 +65,16 @@ about
 ** kwargs : dict
 ---------------
 
-    stats: dataframe output from diff_meth_pos()
+    stats: dataframe
+        dataframe output from diff_meth_pos()
     manifest_or_array_type: class instance or string
-    filename: filename to prepend to the .BED file created.
+        pass in the manifest, or the name of the array
+    filename:
+        filename to prepend to the .BED file created.
     creates a <filename>.bed output from diff_meth_pos and to_BED.
+    genome_build: default 'NEW'
+        by default, it uses the NEWer genome build. Each manifest contains two genome builds,
+        marked "NEW" and "OLD". To use the OLD build, se this to "OLD".
 
 computational options:
 ----------------------
@@ -106,9 +112,6 @@ tissue: str
     if specified, adds additional columns to the annotation output with the expression levels for identified genes
     in any/all tissue(s) that match the keyword. (e.g. if your methylation samples are whole blood,
     specify `tissue=blood`) For all 54 tissues, use `tissue=all`
-
-.. TODO::
-   genome_build: pipeline is not "aware" of NEW vs OLD genome builds being used. Always uses the newest one.
     """
     kw = {
         'col_num': 3, # chrom | start | end | pvalue | name
@@ -120,9 +123,13 @@ tissue: str
     # user override any defaults
     kw.update(kwargs)
 
-    #TODO use genome_build too
     bed_filename = f"{kwargs.get('prefix','')}_dmp_stats"
-    bed_file = to_BED(stats, manifest_or_array_type, save=True, filename=bed_filename, columns=['chrom' ,'start', 'end', 'pvalue', 'name'])
+    bed_file = to_BED(stats, manifest_or_array_type,
+        save=True,
+        filename=bed_filename,
+        columns=['chrom' ,'start', 'end', 'pvalue', 'name'],
+        genome_build=kw.get('genome_build', None)
+        )
 
     kw['bed_files'] = [bed_file]
     if not kw.get('prefix'):
@@ -226,7 +233,7 @@ tissue: str
 
     if stats_series != {}:
         # problem: manifest is unique but FDR/SLK, so need to look up
-        chr_start_end = manifest_gene_map(manifest, genome_build='NEW')
+        chr_start_end = manifest_gene_map(manifest, genome_build=kw.get('genome_build', None))
         chr_start_end.index.name = 'name'
         probe_index = list(stats_series.values())[0].index
         #--- cannot DO: stats_series['chrom'] = chr_start_end[ chr_start_end.index.isin(probe_index) ]
@@ -244,8 +251,13 @@ tissue: str
     # cruzdb is python2x only, and hasn't been maintained since 2014. So we wrote our own UCSC interface function: fetch_genes
     regions_stats_file = Path(f"{kw.get('prefix','')}_regions.csv")
     if kw.get('annotate',True) == True and regions_stats_file.exists():
-        final_results = fetch_genes(regions_stats_file, tissue=kw.get('tissue',None))
-        files_created.append(f"{kw.get('prefix','')}_regions_genes.csv")
+        if manifest.array_type in ['mouse']:
+            LOGGER.warning(f"Genome annotation is not supported for {manifest.array_type} array_type.")
+        elif kw.get('genome_build', None) == 'OLD':
+            LOGGER.warning(f"Genome annotation is not supported for OLD genome builds. Only the latest (hg38) build is supported.")
+        else:
+            final_results = fetch_genes(regions_stats_file, tissue=kw.get('tissue',None))
+            files_created.append(f"{kw.get('prefix','')}_regions_genes.csv")
     elif kw.get('annotate',True) == True:
         LOGGER.error(f"Could not annotate; no regions.csv file found")
     files_created.append(bed_file)
@@ -374,7 +386,7 @@ def pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
     if not Path(f"{prefix}.regions-p.bed.gz").exists():
         return {"result": "No clustered CpG regions found (that differ between your sample groups)."}
 
-    """ NEXT function filter.filter() requires bedtools installed, and only works on macos/linux.
+    """combined-pvalues: NEXT function filter.filter() requires bedtools installed, and only works on macos/linux.
     -- combines regions from multiple datasets, I think.
     with ts.nopen(prefix + ".regions-t.bed", "w") as fh:
         N = 0
@@ -395,13 +407,13 @@ def pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
                 % (fh.name, region_filter_p, region_filter_n, N),
                 file=sys.stderr)
     """
-    from cpv import manhattan
-    regions = manhattan.read_regions(fh.name)
-
-    manhattan.manhattan(prefix + ".slk.bed.gz", 3,
-        prefix.rstrip(".") + ".manhattan.png",
-        False, ['#959899', '#484B4C'], "", False, None,
-        regions=regions, bonferonni=False)
+    if verbose:
+        from cpv import manhattan
+        regions = manhattan.read_regions(fh.name)
+        manhattan.manhattan(prefix + ".slk.bed.gz", 3,
+            prefix.rstrip(".") + ".manhattan.png",
+            False, ['#959899', '#484B4C'], "", False, None,
+            regions=regions, bonferonni=False)
     return {"result": "OK"}
 
 
