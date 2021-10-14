@@ -62,3 +62,4 @@ class TestGenome():
             fake_df.to_csv(fake_source)
             results = methylize.fetch_genes(fake_source, verbose=True)
             print(str(e_msg.value))
+            Path(fake_source).unlink()

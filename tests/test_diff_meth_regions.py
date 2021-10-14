@@ -61,7 +61,7 @@ def test_diff_meth_positions_no_regions_found():
     stats = methylize.diff_meth_pos(sample, pheno, verbose=False)
     #manifest_or_array_type = 'epic+'
     import methylprep
-    man = methylprep.Manifest(methlprep.ArrayType('epic+'))
+    man = methylprep.Manifest(methylprep.ArrayType('epic+'))
     files_created = methylize.diff_meth_regions(stats, manifest_or_array_type=man, prefix='docs/example_data/epic_plus/epic_plus',
         genome_control=True)
     print(files_created)
