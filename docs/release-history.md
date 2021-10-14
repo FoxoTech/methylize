@@ -5,7 +5,7 @@
   - DMP maps differences to chromosomes; DMR maps differences to specific genomic locii, and requires more processing.
   - upgraded methylprep manifests to support both old and new genomic build mappings for all array types.
   - Illumina 27k arrays are still not supported, but mouse, epic, epic+, and 450k ARE supported.
-- diff_meth_position() function
+- diff_meth_regions() function
   - integrates the combined-pvalues package (https://pubmed.ncbi.nlm.nih.gov/22954632/)
   - integrates with UCSC Genome (refGene) and annotates the genes near CpG regions.
   - includes columns showing the tissue specific expression levels of relevant genes (filter=blood)

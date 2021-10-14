@@ -61,6 +61,7 @@ def create_probe_chr_map(manifest, genome_build=None, include_sex=True):
     - only used by manhattan_plot()"""
     sex_chromosomes = ['X','Y']
     use = 'OLD_CHR' if genome_build == 'OLD' else 'CHR'
+
     probe2map = manifest.data_frame[[use]]
     probe2map = probe2map[ ~probe2map[use].isna() ] # drops control probes or any not linked to a chromosome
     #other_map = probe2map[ ~probe2map[use].str.isdigit() ]

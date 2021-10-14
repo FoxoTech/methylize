@@ -797,7 +797,6 @@ visualization kwargs
     NL[NL == -1] = min(np.argmax(NL),ymax) # replacing inf; capping at ymax (100)
     df['minuslog10pvalue'] = NL
 
-
     # map probes to chromosome using an internal methylize lookup pickle, probe2chr.
     pre_length = len(df)
 
