@@ -27,7 +27,7 @@ table_mapper = {
     'txEnd': 'chromStart',
 }
 conn = None
-def fetch_genes(dmr_regions_file, tol=100, ref=None, sql=None,
+def fetch_genes(dmr_regions_file=None, tol=250, ref=None, tissue=None, sql=None,
      use_cached=True, save=True, verbose=False,
      host=HOST, user=USER, password='', db=DB):
     f"""find genes that are adjacent to significantly different CpG regions provided.
@@ -44,7 +44,7 @@ fetch_genes() is an EXPLORATORY tool and makes a number of simplicifications:
   - it measures the distance from the start position of the one representative probe per region to any nearby
   genes, using the `tol`erance parameter as the cutoff. Tolerance is the max number of base pairs of separation
   between the probe sequence start and the gene sequence start for it to be considered as a match.
-  - The default `tol`erance is 100, but that is arbitrary. Increase it to expand the search area, or decrease it
+  - The default `tol`erance is 250, but that is arbitrary. Increase it to expand the search area, or decrease it
   to be more conservative. Remember that Illumina CpG probe sequences are 50 base pairs long, so 100 is nearly
   overlapping. 300 or 500 would also be reasonable.
   - "Adjacent" in the linear sequence may not necessarily mean that the CpG island is FUNCTIONALLY coupled to the
@@ -53,16 +53,25 @@ fetch_genes() is an EXPLORATORY tool and makes a number of simplicifications:
   "adjacent" in this sense.
   - Changing the `tol`erance, or the reference database will result major differences in the output, and thus
   one's interpretation of the same data.
+  - Before interpreting these "associations" you should also consider filtering candidate genes by
+  specific cell types where they are expressed. You should know the tissue from which your samples originated.
+  And filter candidate genes to exclude those that are only expressed in your tissue during development,
+  if your samples are from adults, and vice versa.
 
 arguments:
 ----------
 dmr_regions_file:
     pass in the output file from DMR function.
+    Omit if you specify the `sql` kwarg instead.
 ref: default is `refGene`
     use one of possible_tables for lookup:
     `{possible_tables}`
-tol:
+tol: default 250
     +/- this many base pairs consistutes a gene "related" to a CpG region provided.
+tissue: str
+    if specified, adds additional columns to output with the expression levels for identified genes
+    in any/all tissue(s) that match the keyword. (e.g. if your methylation samples are whole blood,
+    specify `tissue=blood`) For all 54 tissues, use `tissue=all`
 use_cached:
     If True, the first time it downloads a dataset from UCSC Genome Browser, it will save to disk
     and use that local copy thereafter. To force it to use the online copy, set to False.
@@ -78,6 +87,8 @@ host, user, password, db:
     """
     if verbose:
         logging.basicConfig(level=logging.INFO)
+    if not sql and not dmr_regions_file:
+        raise Exception("Either provide a path to the DMR stats file or a sql query.")
     if not sql:
         regions = pd.read_csv(dmr_regions_file) #.sort_values('z_p')
         reqd_regions = set(['name', 'chromStart'])
@@ -157,6 +168,38 @@ host, user, password, db:
     regions['genes'] = regions['name'].map(matches)
     regions['distances'] = regions['name'].map(distances)
     regions['descriptions'] = regions['name'].map(descriptions)
+
+    # add column(s) for gene tissue expression
+    if tissue != None:
+        # tissue == 'all'
+        tissues = fetch_genes(sql="select * from hgFixed.gtexTissueV8;")
+        sorted_tissues = [i['name'] for i in tissues]
+        gene_names = [i.split(',') for i in list(regions['genes']) if i != '']
+        gene_names = tuple([item for sublist in gene_names for item in sublist])
+        gtex = fetch_genes(sql=f"select name, expScores from gtexGeneV8 WHERE name in {gene_names} and score > 0;")
+        if len(gtex) > 0:
+            # convert to a lookup dict of gene name: list of tissue scores
+            gtex = {item['name']: [float(i) for i in item['expScores'].decode().split(',') if i != ''] for item in gtex}
+
+            # add tissue names
+            if len(tissues) != len(list(gtex.values())[0]):
+                LOGGER.error(f"GTEx tissue names and expression levels mismatch.")
+            else:
+                for gene, expScores in gtex.items():
+                    labeled_scores = dict(zip(sorted_tissues, expScores))
+                    gtex[gene] = labeled_scores
+                # to merge, create a new dataframe with matching genes names as index.
+                tissue_df = pd.DataFrame.from_dict(data=gtex, orient='index')
+                if tissue != 'all':
+                    matchable = dict(zip([k.lower() for k in list(tissue_df.columns)], list(tissue_df.columns)))
+                    keep_columns = [col_name for item,col_name in matchable.items() if tissue.lower() in item]
+                    if keep_columns == []:
+                        LOGGER.warning(f"No GTEx tissue types matched: {tissue}; returning all tissues instead.")
+                    else:
+                        tissue_df = tissue_df[keep_columns]
+                # this merge will ONLY WORK if there is just one gene listed in the gene column
+                regions = regions.merge(tissue_df, how='left', left_on='genes', right_index=True)
+
     #finaly, add column to file and save
     if save:
         dmr_regions_stem = str(dmr_regions_file).replace('.csv','')
@@ -164,3 +207,34 @@ host, user, password, db:
         regions.to_csv(Path(outfile))
         LOGGER.info(f"Wrote {outfile}")
     return regions
+
+"""
+tissue='all' (for big table) or tissue='blood' for one extra column
+TODO -- incorporate the GTEx tables (expression by tissue) if user specifies one of 54 tissue types covered.
+
+gtexGeneV8 x gtexTissue
+
+"hgFixed.gtexTissue lists each of the 53 tissues in alphabetical order, corresponding to the comma separated expression values in gtexGene."
+
+works: tissue_lookup = m.fetch_genes('', sql="select * from hgFixed.gtexTissueV8;")
+then match tissue keyword kwarg against 'description' field and use 'name' for colname
+
+note that expScores is a list of 54 numbers (expression levels).
+
+chrom	chromStart	chromEnd	name	score	strand	geneId	geneType	expCount	expScores
+{'chrom': 'chr1',
+  'chromEnd': 29806,
+  'chromStart': 14969,
+  'expCount': 53,
+  'expScores': b'6.886,6.083,4.729,5.91,6.371,6.007,8.768,4.202,4.455,4.64,10'
+               b'.097,10.619,6.108,5.037,5.018,4.808,4.543,4.495,5.576,4.57,8'
+               b'.275,4.707,2.55,9.091,9.885,8.17,7.392,7.735,5.353,7.124,8.6'
+               b'17,3.426,2.375,7.669,3.826,7.094,6.365,3.263,10.723,10.507,4'
+               b'.843,9.193,13.25,11.635,11.771,8.641,10.448,6.522,9.313,10.3'
+               b'04,9.987,9.067,6.12,',
+  'geneId': 'ENSG00000227232.4',
+  'geneType': 'unprocessed_pseudogene',
+  'name': 'WASH7P',
+  'score': 427,
+  'strand': '-'},
+"""

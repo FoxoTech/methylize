@@ -1,10 +1,18 @@
 # Release History
 
-## v1.0.0
+## v0.9.9
 - Added differentially methylated regions (DMR) functions, alongside diff-meth-pos(ition) DMP functions.
   - DMP maps differences to chromosomes; DMR maps differences to specific genomic locii, and requires more processing.
   - upgraded methylprep manifests to support both old and new genomic build mappings for all array types.
   - Illumina 27k arrays are still not supported, but mouse, epic, epic+, and 450k ARE supported.
+- diff_meth_position() function
+  - integrates the combined-pvalues package (https://pubmed.ncbi.nlm.nih.gov/22954632/)
+  - integrates with UCSC Genome (refGene) and annotates the genes near CpG regions.
+  - includes columns showing the tissue specific expression levels of relevant genes (filter=blood)
+  this function is also available with extended options as methylize.filter_genes()
+  - provides output BED and CSV files for each export into other genomic analysis tools
+- methylize.to_BED will convert the diff_meth_pos() stats output into a standard BED file
+  (tab separated CSV format with standardized, ordered column names)
 
 ## v0.9.8
 - fixed methylize diff_meth_pos linear regression. upgraded features too

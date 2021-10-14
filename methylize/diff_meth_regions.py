@@ -102,10 +102,13 @@ annotate: bool
     differentially methylated regions in the output CSV. If you want to fine-tune the reference database,
     the tolerance of what "nearby" means, and other parameters, set this to false and call `methylize.fetch_genes`
     as a separate step on the '..._regions.csv' output file.
+tissue: str
+    if specified, adds additional columns to the annotation output with the expression levels for identified genes
+    in any/all tissue(s) that match the keyword. (e.g. if your methylation samples are whole blood,
+    specify `tissue=blood`) For all 54 tissues, use `tissue=all`
 
 .. TODO::
-   genome_build
-   It is not "aware" of NEW vs OLD genome builds being used. Always uses the newest one.
+   genome_build: pipeline is not "aware" of NEW vs OLD genome builds being used. Always uses the newest one.
     """
     kw = {
         'col_num': 3, # chrom | start | end | pvalue | name
@@ -139,10 +142,10 @@ annotate: bool
             region_filter_n = kw.get('region_filter_n'),
             genome_control=False, use_fdr=not kw.get('no_fdr',False),
             log_to_file=True, verbose=kw.get('verbose',False))
-        LOGGER.info(results)
-    except SystemExit as e:
-        LOGGER.info("No regions found")
-        LOGGER.info(e)
+        if results["result"] != "OK":
+            LOGGER.warning(results)
+    except Exception as e:
+        LOGGER.error(e)
     # add probe names back into these files:
     files_created = [
         f"{kw.get('prefix','')}.args.txt",
@@ -156,6 +159,7 @@ annotate: bool
     # add probe names and prepare one common stats-results CSV:
     stats_series = {}
     _deleted = None
+    _no_regions = None
     _added = None
     for _file in files_created:
         # errors here are for when no regions are found, and file are blank.
@@ -165,6 +169,9 @@ annotate: bool
             Path(_file).unlink()
             _deleted = _file
         elif 'regions-p.bed' in _file:
+            if results["result"] == "No regions found":
+                _no_regions = _file
+                continue
             regions_p_header = ['chrom','chromStart','chromEnd','min_p','n_probes','z_p','z_sidak_p']
             regions_p_rename = {'#chrom':'chrom', 'start': 'chromStart', 'end': 'chromEnd'}
             try:
@@ -191,6 +198,8 @@ annotate: bool
                 LOGGER.error(f"{_file}: {e}")
     files_created.remove(_deleted)
     files_created.append(_added)
+    if _no_regions:
+        files_created.remove(_no_regions)
     # switch from `Agg` to interactive; but diff OSes work with diff ones, and the best ones are not default installed.
     interactive_backends = ['TkAgg', 'Qt5Agg', 'MacOSX', 'ipympl', 'GTK3Agg', 'GTK3Cairo', 'nbAgg', 'Qt5Cairo','TkCairo']
     try:
@@ -235,7 +244,7 @@ annotate: bool
     # cruzdb is python2x only, and hasn't been maintained since 2014. So we wrote our own UCSC interface function: fetch_genes
     regions_stats_file = Path(f"{kw.get('prefix','')}_regions.csv")
     if kw.get('annotate',True) == True and regions_stats_file.exists():
-        final_results = fetch_genes(regions_stats_file)
+        final_results = fetch_genes(regions_stats_file, tissue=kw.get('tissue',None))
         files_created.append(f"{kw.get('prefix','')}_regions_genes.csv")
     elif kw.get('annotate',True) == True:
         LOGGER.error(f"Could not annotate; no regions.csv file found")
@@ -333,8 +342,7 @@ def pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
     n_regions = sum(1 for _ in ts.nopen(fregions))
     if verbose: LOGGER.info(f"wrote: {fregions} ({n_regions} regions)")
     if n_regions == 0:
-        LOGGER.warning("No regions found.")
-        return
+        return {"result": "No regions found"}
 
     # HACK -- edit pvalues and region-p to be >0.00000
     # this prevents a bunch of "divide by zero" warnings
@@ -364,7 +372,7 @@ def pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
     if region_filter_n is None:
         region_filter_n = 0
     if not Path(f"{prefix}.regions-p.bed.gz").exists():
-        LOGGER.warning("No clustered CpG regions found (that differ between your sample groups).")
+        return {"result": "No clustered CpG regions found (that differ between your sample groups)."}
 
     """ NEXT function filter.filter() requires bedtools installed, and only works on macos/linux.
     -- combines regions from multiple datasets, I think.
@@ -394,7 +402,7 @@ def pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
         prefix.rstrip(".") + ".manhattan.png",
         False, ['#959899', '#484B4C'], "", False, None,
         regions=regions, bonferonni=False)
-    return
+    return {"result": "OK"}
 
 
 def read_regions(fregions):

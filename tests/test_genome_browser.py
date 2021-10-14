@@ -17,8 +17,11 @@ cannot test "flush cache after 30 days" code
 
 class TestGenome():
     source = Path('tests','test_dmr_regions.csv')
+    expected_match_tol_250 = (1153, 11)
     expected_match_tol_100 = (499, 11)
+    expected_match_tol_250_ncbi = (1626, 11)
     expected_match_tol_100_ncbi = (760, 11)
+    expected_match_tol_250_known = (2605, 11)
     expected_match_tol_100_known = (1350, 11)
 
     def test_fetch_genes_sql(self):
@@ -28,20 +31,20 @@ class TestGenome():
             raise AssertionError(f"raw SQL option failed")
 
     def test_fetch_genes_ncbiRefSeq(self):
-        results = methylize.fetch_genes(self.source, ref='ncbiRefSeq')
+        results = methylize.fetch_genes(self.source, ref='ncbiRefSeq', tol=250)
         # no descriptions (can't join tables)
         matched = results[ results.genes != '' ]
-        if matched.shape != self.expected_match_tol_100_ncbi:
-            raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_100_ncbi}. Perhaps the genome data updated?")
+        if matched.shape != self.expected_match_tol_250_ncbi:
+            raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_250_ncbi}. Perhaps the genome data updated?")
 
     def test_fetch_genes_knownGene(self):
-        results = methylize.fetch_genes(self.source, ref='knownGene')
+        results = methylize.fetch_genes(self.source, ref='knownGene', tol=250)
         matched = results[ results.genes != '' ]
-        if matched.shape != self.expected_match_tol_100_known:
-            raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_100}. Perhaps the genome data updated?")
+        if matched.shape != self.expected_match_tol_250_known:
+            raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_250_known}. Perhaps the genome data updated?")
 
     def test_fetch_genes_refGene(self):
-        results = methylize.fetch_genes(self.source, ref='refGene')
+        results = methylize.fetch_genes(self.source, ref='refGene', tol=100)
         matched = results[ results.descriptions != '' ]
         if matched.shape != self.expected_match_tol_100:
             raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_100}. Perhaps the genome data updated?")
