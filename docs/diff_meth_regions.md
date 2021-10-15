@@ -91,7 +91,7 @@ There are a lot of additional corrections that researchers make at this stage, a
 
 University of California Santa Cruz maintains a large database of every version of the human genome and its meta data at https://genome.ucsc.edu/cgi-bin/hgTables. You can browse these database tables.
 
-![UCSC database](docs/source/Genome-Browser-UCSC-display.png?raw=true)
+![](https://raw.githubusercontent.com/FoxoTech/methylize/feature/master/docs/source/Genome-Browser-UCSC-display.png)
 
 If you are using the latest genome build (hg38), diff_meth_regions will annotate your database using the `refGene` table. It also (partially) supports the `knownGene` and `ncbiRefSeq` tables, if you want to use those. This is useful for identifying genes that are
 nearby your regions of interest, and noting the tissue specificity of those genes, in exploring your data.
