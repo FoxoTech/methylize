@@ -2,10 +2,13 @@
 
 [![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylize/badge/?version=latest)](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv) [![CircleCI](https://circleci.com/gh/FoxoTech/methylize/tree/master.svg?style=shield)](https://circleci.com/gh/FoxoTech/methylize/tree/master) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/099d26465bd64c2387afa063810a13e6)](https://www.codacy.com/gh/FoxoTech/methylize/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FOXOBioScience/methylize&amp;utm_campaign=Badge_Grade) [![Coverage Status](https://coveralls.io/repos/github/FoxoTech/methylize/badge.svg?branch=master)](https://coveralls.io/github/FoxoTech/methylize?branch=master)
 
-
-1. [Overview](README.md)
-2. [Demonstrating differentially methylated probe (DMP) detection (volcano plot) and mapping to chrosomes (manhattan plot)](docs/demo_diff_meth_pos.ipynb)
-3. [differentially methylated regions](docs/diff_meth_regions.md)
+- [Overview](README.md)
+- [Differentially methylated position (DMP) regression, detection and visualation](docs/demo_diff_meth_pos.ipynb)
+  - [Logistic Regression](docs/demo_diff_meth_pos.html#Testing-logistic-regression)
+  - [Linear Regression](docs/demo_diff_meth_pos.html#Testing-linear-regression)
+  - [volcano plot and mapping to chromosomes (manhattan plot)](docs/demo_diff_meth_pos.html#Testing-Manhattan-plot-visualizations)
+- [Differentially methylated regions](docs/diff_meth_regions.md)
+  - [Gene annotation with the UCSC Human Genome Browser](docs/diff_meth_regions.html#gene-annotation-with-ucsc-genome-browser)
 
 ## Methylize Package
 

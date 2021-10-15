@@ -28,9 +28,9 @@ table_mapper = {
 }
 conn = None
 def fetch_genes(dmr_regions_file=None, tol=250, ref=None, tissue=None, sql=None,
-     save=True, verbose=False, use_cached=True, no_sync=False, genome_build=None,
-     host=HOST, user=USER, password='', db=DB):
-     """find genes that are adjacent to significantly different CpG regions provided.
+    save=True, verbose=False, use_cached=True, no_sync=False, genome_build=None,
+    host=HOST, user=USER, password='', db=DB):
+    """find genes that are adjacent to significantly different CpG regions provided.
 
 summary:
 --------

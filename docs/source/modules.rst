@@ -1,19 +1,14 @@
-.. _modules:
-
-.. currentmodule:: methylize
-
 API Reference
 =============
 
 .. autosummary::
-   :toctree: _autosummary
 
-   methylyize.diff_meth_pos
-   methylyize.diff_meth_regions
-   methylyize.fetch_genes
-   methylyize.volcano_plot
-   methylyize.manhattan_plot
-   methylyize.helpers.to_BED
+    methylyize.diff_meth_pos
+    methylyize.diff_meth_regions
+    methylyize.fetch_genes
+    methylyize.volcano_plot
+    methylyize.manhattan_plot
+    methylyize.helpers.to_BED
 
 
 differentially methylated positions
