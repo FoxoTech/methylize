@@ -441,19 +441,22 @@ def linear_DMP_regression(probe_data, phenotypes, alpha=0.05):
 This function performs a linear regression on a single probe's worth of methylation
 data (in the form of M-values). It is called by the detect_DMPs.
 
-Inputs and Parameters
----------------------------------------------------------------------------
-    probe_data: A pandas Series for a single probe with a methylation M-value/beta-value
-                for each sample in the analysis. The Series name corresponds
-                to the probe ID, and the Series is extracted from the meth_data
-                DataFrame through a parallellized loop in detect_DMPs.
-    phenotypes: A numpy array of numeric phenotypes with one phenotype per
-                sample (so it must be the same length as probe_data). This is
-                the same object as the pheno_data input to detect_DMPs after
-                it has been checked for data type and converted to the
-                numpy array pheno_data_array.
+Inputs and Parameters:
+
+    probe_data:
+        A pandas Series for a single probe with a methylation M-value/beta-value
+        for each sample in the analysis. The Series name corresponds
+        to the probe ID, and the Series is extracted from the meth_data
+        DataFrame through a parallellized loop in detect_DMPs.
+    phenotypes:
+        A numpy array of numeric phenotypes with one phenotype per
+        sample (so it must be the same length as probe_data). This is
+        the same object as the pheno_data input to detect_DMPs after
+        it has been checked for data type and converted to the
+        numpy array pheno_data_array.
 
 Returns:
+
     A pandas Series of regression statistics for the single probe analyzed.
     The columns of regression statistics are as follows:
         - regression coefficient
@@ -504,8 +507,7 @@ Runs parallelized.
 This function performs a logistic regression on a single probe's worth of methylation
 data (in the form of M-values). It is called by the detect_DMPs.
 
-Inputs and Parameters
----------------------
+Inputs and Parameters:
 
     probe_data:
         A pandas Series for a single probe with a methylation M-value or beta_value
@@ -519,8 +521,7 @@ Inputs and Parameters
         it has been checked for data type and converted to the
         numpy array pheno_data_binary.
 
-Returns
--------
+Returns:
 
     A pandas Series of regression statistics for the single probe analyzed.
     The columns of regression statistics are as follows:
@@ -578,8 +579,8 @@ and columns with different regression statistics as follows:
         - p-value
         - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
 
-Inputs and Parameters
----------------------------------------------------------------------------
+Inputs and Parameters:
+
     stats_results (required):
         A pandas DataFrame output by the function detect_DMPs.
     cutoff:
@@ -607,6 +608,7 @@ Inputs and Parameters
         specify an export filename. default is `volcano_<current_date>.png`.
 
 Returns:
+
     Displays a plot, but does not directly return an object.
     The data is color coded and displayed as follows:
 
@@ -940,8 +942,8 @@ and columns with different regression statistics as follows:
         - p-value
         - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
 
-Inputs and Parameters
----------------------------------------------------------------------------
+Inputs and Parameters:
+
     stats_results: A pandas DataFrame output by the function detect_DMPs.
     filename: A string that will be used to name the resulting .CSV file.
 

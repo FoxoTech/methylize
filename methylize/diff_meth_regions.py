@@ -60,8 +60,7 @@ comb-p is a command-line tool and a python library that manipulates BED files of
 
 ref: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3496335/
 
-Input Parameters
-----------------
+Input Parameters:
 
     stats: dataframe
         dataframe output from diff_meth_pos()
@@ -74,47 +73,47 @@ Input Parameters
         by default, it uses the NEWer genome build. Each manifest contains two genome builds,
         marked "NEW" and "OLD". To use the OLD build, se this to "OLD".
 
-Computational Parameters
-------------------------
-dist: int
-    maximum distance from each probe to scan for adjacent peaks (80)
-acf-dist: int
-    window-size for smoothing. Default is 1/3 of peak-dist (dist kwarg),
-step: int
-    step size for bins in the ACF calculation (50)
-threshold: foat
-    Extend regions after seeding if pvalue exceeds this value (default: same as seed)
-seed: float
-    minimum size of a genomic region (0.05)
-no_fdr: bool
-    don't use FDR
-genomic_control: bool
-    correct input pvalues for genomic control
+Computational Parameters:
 
-Display/output Paramters
-------------------------
-verbose: bool -- default False
-    Display additional processing information on screen.
-prefix: str
-    prefix that gets appended to all output files (e.g. 'dmr' becomes 'dmr_regions.csv')
-region_filter_p:
-    max adjusted region-level p-value in final output.
-region_filter_n:
-    req at least this many probes in a region
-annotate: bool
-    annotate with fetch_genes() function that uses UCSC refGene database to add "nearby" genes to
-    differentially methylated regions in the output CSV. If you want to fine-tune the reference database,
-    the tolerance of what "nearby" means, and other parameters, set this to false and call `methylize.fetch_genes`
-    as a separate step on the '..._regions.csv' output file.
-tissue: str
-    if specified, adds additional columns to the annotation output with the expression levels for identified genes
-    in any/all tissue(s) that match the keyword. (e.g. if your methylation samples are whole blood,
-    specify `tissue=blood`) For all 54 tissues, use `tissue=all`
+    dist: int
+        maximum distance from each probe to scan for adjacent peaks (80)
+    acf-dist: int
+        window-size for smoothing. Default is 1/3 of peak-dist (dist kwarg),
+    step: int
+        step size for bins in the ACF calculation (50)
+    threshold: foat
+        Extend regions after seeding if pvalue exceeds this value (default: same as seed)
+    seed: float
+        minimum size of a genomic region (0.05)
+    no_fdr: bool
+        don't use FDR
+    genomic_control: bool
+        correct input pvalues for genomic control
 
-Returns
--------
-list
-    A list of files created.
+Display/output Paramters:
+
+    verbose: bool -- default False
+        Display additional processing information on screen.
+    prefix: str
+        prefix that gets appended to all output files (e.g. 'dmr' becomes 'dmr_regions.csv')
+    region_filter_p:
+        max adjusted region-level p-value in final output.
+    region_filter_n:
+        req at least this many probes in a region
+    annotate: bool
+        annotate with fetch_genes() function that uses UCSC refGene database to add "nearby" genes to
+        differentially methylated regions in the output CSV. If you want to fine-tune the reference database,
+        the tolerance of what "nearby" means, and other parameters, set this to false and call `methylize.fetch_genes`
+        as a separate step on the '..._regions.csv' output file.
+    tissue: str
+        if specified, adds additional columns to the annotation output with the expression levels for identified genes
+        in any/all tissue(s) that match the keyword. (e.g. if your methylation samples are whole blood,
+        specify `tissue=blood`) For all 54 tissues, use `tissue=all`
+
+Returns:
+
+    list
+        A list of files created.
     """
     kw = {
         'col_num': 3, # chrom | start | end | pvalue | name

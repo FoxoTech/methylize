@@ -95,15 +95,16 @@ load_color_schemes()
 
 def to_genome(df, rgset): # pragma: no cover
     """__deprecated__ Maps dataframe to genome locations
-    Parameters
-    ----------
+
+Parameters:
+
     df: dataframe
             Dataframe containing methylation, unmethylation, M or Beta
             values for each sample at each site
     rgset: rg channel set instance
             RG channel set instance related to provided df
-    Returns
-    -------
+Returns:
+
     df: dataframe
             Dataframe containing the original values with the addition
             of genomic locations for each site

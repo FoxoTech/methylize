@@ -32,13 +32,11 @@ def fetch_genes(dmr_regions_file=None, tol=250, ref=None, tissue=None, sql=None,
     host=HOST, user=USER, password='', db=DB):
     """find genes that are adjacent to significantly different CpG regions provided.
 
--------
-summary
--------
+Summary:
 
-fetch_genes() annotates the DMR region output file, using the UCSC Genome Browser database as a reference
-as to what genes are nearby. This is an exploratory tool, as there are many versions of the human genome
-that map genes to slightly different locations.
+    fetch_genes() annotates the DMR region output file, using the UCSC Genome Browser database as a reference
+    as to what genes are nearby. This is an exploratory tool, as there are many versions of the human genome
+    that map genes to slightly different locations.
 
 fetch_genes() is an EXPLORATORY tool and makes a number of simplicifications:
 
@@ -61,42 +59,40 @@ fetch_genes() is an EXPLORATORY tool and makes a number of simplicifications:
   And filter candidate genes to exclude those that are only expressed in your tissue during development,
   if your samples are from adults, and vice versa.
 
----------
-arguments
----------
+Arguments:
 
-dmr_regions_file:
-    pass in the output file from DMR function.
-    Omit if you specify the `sql` kwarg instead.
-ref: default is `refGene`
-    use one of possible_tables for lookup:
-    - 'refGene' -- 88,819 genes -- default table used in comb-b and cruzdb packages.
-    - 'knownGene' -- 232,184 genes -- pseudo genes too (the "WHere TranscriptType == 'coding_protein'" clause would work, but these fields are missing from the data returned.)
-    - 'ncbiRefSeq' -- 173,733 genes -- this table won't have gene descriptions, because it cannot be joined with the 'kgXref' (no shared key).
-    Additionally, 'gtexGeneV8' is used for tissue-expression levels. Pseudogenes are ommited using the "WHERE score > 0" clause in the SQL.
+    dmr_regions_file:
+        pass in the output file from DMR function.
+        Omit if you specify the `sql` kwarg instead.
+    ref: default is `refGene`
+        use one of possible_tables for lookup:
+        - 'refGene' -- 88,819 genes -- default table used in comb-b and cruzdb packages.
+        - 'knownGene' -- 232,184 genes -- pseudo genes too (the "WHere TranscriptType == 'coding_protein'" clause would work, but these fields are missing from the data returned.)
+        - 'ncbiRefSeq' -- 173,733 genes -- this table won't have gene descriptions, because it cannot be joined with the 'kgXref' (no shared key).
+        Additionally, 'gtexGeneV8' is used for tissue-expression levels. Pseudogenes are ommited using the "WHERE score > 0" clause in the SQL.
 
-tol: default 250
-    +/- this many base pairs consistutes a gene "related" to a CpG region provided.
-tissue: str
-    if specified, adds additional columns to output with the expression levels for identified genes
-    in any/all tissue(s) that match the keyword. (e.g. if your methylation samples are whole blood,
-    specify `tissue=blood`) For all 54 tissues, use `tissue=all`
-genome_build: (None, NEW, OLD)
-    Only the default human genome build, hg38, is currently supported. Even though many other builds are available
-    in the UCSC database, most tables do not join together in the same way.
-use_cached:
-    If True, the first time it downloads a dataset from UCSC Genome Browser, it will save to disk
-    and use that local copy thereafter. To force it to use the online copy, set to False.
-no_sync:
-    methylize ships with a copy of the relevant UCSC gene browser tables, and will auto-update these
-    every month. If you want to run this function without accessing this database, you can avoid updating
-    using the `no_sync=True` kwarg.
-host, user, password, db:
-    Internal database connections for UCSC server. You would only need to mess with these of the server domain changes
-    from the current hardcoded value {HOST}. Necessary for tables to be updated and for `tissue` annotation.
-sql:
-    a DEBUG mode that bypasses the function and directly queries the database for any information the user wants.
-    Be sure to specify the complete SQL statement, including the ref-table (e.g. refGene or ncbiRefSeq).
+    tol: default 250
+        +/- this many base pairs consistutes a gene "related" to a CpG region provided.
+    tissue: str
+        if specified, adds additional columns to output with the expression levels for identified genes
+        in any/all tissue(s) that match the keyword. (e.g. if your methylation samples are whole blood,
+        specify `tissue=blood`) For all 54 tissues, use `tissue=all`
+    genome_build: (None, NEW, OLD)
+        Only the default human genome build, hg38, is currently supported. Even though many other builds are available
+        in the UCSC database, most tables do not join together in the same way.
+    use_cached:
+        If True, the first time it downloads a dataset from UCSC Genome Browser, it will save to disk
+        and use that local copy thereafter. To force it to use the online copy, set to False.
+    no_sync:
+        methylize ships with a copy of the relevant UCSC gene browser tables, and will auto-update these
+        every month. If you want to run this function without accessing this database, you can avoid updating
+        using the `no_sync=True` kwarg.
+    host, user, password, db:
+        Internal database connections for UCSC server. You would only need to mess with these of the server domain changes
+        from the current hardcoded value {HOST}. Necessary for tables to be updated and for `tissue` annotation.
+    sql:
+        a DEBUG mode that bypasses the function and directly queries the database for any information the user wants.
+        Be sure to specify the complete SQL statement, including the ref-table (e.g. refGene or ncbiRefSeq).
 
 .. note::
    This method flushes cache periodically. After 30 days, it deletes cached reference gene tables and re-downloads.
