@@ -42,7 +42,7 @@ genomic location against the phenotype data for those samples.
 Phenotypes can be provided as a list of string-based or integer binary data
 or as numeric continuous data.
 
-.. Input Parameters::
+Input Parameters:
 
     meth_data:
         A pandas dataframe of methylation beta_values (or M-values) for
@@ -103,7 +103,7 @@ or as numeric continuous data.
         'delete' - drop probes if NaNs are present in any sample
         'fast' - use adjacent sample probe value instead of average (much faster but less precise)
 
-.. Returns::
+Returns:
 
     A pandas dataframe of regression statistics with a row for each probe analyzed
     and columns listing the individual probe's regression statistics of:
