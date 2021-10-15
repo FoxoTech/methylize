@@ -44,7 +44,6 @@ extensions = [
     'm2r',
     'nbsphinx',
     'sphinx.ext.autosummary',
-    'IPython.sphinxext.ipython_console_highlighting'
 ]
 
 # instead of CLI "sphinx-autodoc . _build/html" you write this
