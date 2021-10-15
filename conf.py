@@ -95,7 +95,7 @@ todo_include_todos = True
 # a list of builtin themes.
 #
 html_theme =  'sphinx_rtd_theme'
-html_logo = 'source/foxo_logo_orange_black.png'
+html_logo = 'docs/source/foxo_logo_orange_black.png'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
