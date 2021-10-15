@@ -1,5 +1,7 @@
 .. _modules:
 
+.. currentmodule:: methylize
+
 API Reference
 =============
 

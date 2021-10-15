@@ -30,7 +30,7 @@ conn = None
 def fetch_genes(dmr_regions_file=None, tol=250, ref=None, tissue=None, sql=None,
      save=True, verbose=False, use_cached=True, no_sync=False, genome_build=None,
      host=HOST, user=USER, password='', db=DB):
-    f"""find genes that are adjacent to significantly different CpG regions provided.
+     """find genes that are adjacent to significantly different CpG regions provided.
 
 summary:
 --------
@@ -65,7 +65,11 @@ dmr_regions_file:
     Omit if you specify the `sql` kwarg instead.
 ref: default is `refGene`
     use one of possible_tables for lookup:
-    `{possible_tables}`
+    - 'refGene' -- 88,819 genes -- default table used in comb-b and cruzdb packages.
+    - 'knownGene' -- 232,184 genes -- pseudo genes too (the "WHere TranscriptType == 'coding_protein'" clause would work, but these fields are missing from the data returned.)
+    - 'ncbiRefSeq' -- 173,733 genes -- this table won't have gene descriptions, because it cannot be joined with the 'kgXref' (no shared key).
+    Additionally, 'gtexGeneV8' is used for tissue-expression levels. Pseudogenes are ommited using the "WHERE score > 0" clause in the SQL.
+
 tol: default 250
     +/- this many base pairs consistutes a gene "related" to a CpG region provided.
 tissue: str
@@ -89,8 +93,8 @@ sql:
     a DEBUG mode that bypasses the function and directly queries the database for any information the user wants.
     Be sure to specify the complete SQL statement, including the ref-table (e.g. refGene or ncbiRefSeq).
 
- .. note::
-    This method flushes cache periodically. After 30 days, it deletes cached reference gene tables and re-downloads.
+.. note::
+   This method flushes cache periodically. After 30 days, it deletes cached reference gene tables and re-downloads.
     """
     if verbose:
         logging.basicConfig(level=logging.INFO)

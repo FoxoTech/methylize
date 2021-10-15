@@ -45,25 +45,23 @@ LOGGER.setLevel(logging.INFO)
 
 np.seterr(under='ignore')
 
-__all__ = ['diff_meth_regions', 'pipeline']
+__all__ = ['diff_meth_regions']
 
 def diff_meth_regions(stats, manifest_or_array_type, **kwargs):
-    """ wrapper for combined-pvalues pipeline.
+    """Calculates and annotates diffentially methylated regions (DMR) using the `combined-pvalues pipeline` and returns list of output files.
 
-about
------
-    comb-p is a command-line tool and a python library that manipulates BED files of possibly irregularly spaced P-values and
+comb-p is a command-line tool and a python library that manipulates BED files of possibly irregularly spaced P-values and
 
-    (1) calculates auto-correlation,
-    (2) combines adjacent P-values,
-    (3) performs false discovery adjustment,
-    (4) finds regions of enrichment (i.e. series of adjacent low P-values) and
-    (5) assigns significance to those regions.
+(1) calculates auto-correlation,
+(2) combines adjacent P-values,
+(3) performs false discovery adjustment,
+(4) finds regions of enrichment (i.e. series of adjacent low P-values) and
+(5) assigns significance to those regions.
 
-    ref: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3496335/
+ref: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3496335/
 
-** kwargs : dict
----------------
+Input Parameters
+----------------
 
     stats: dataframe
         dataframe output from diff_meth_pos()
@@ -76,8 +74,8 @@ about
         by default, it uses the NEWer genome build. Each manifest contains two genome builds,
         marked "NEW" and "OLD". To use the OLD build, se this to "OLD".
 
-computational options:
-----------------------
+Computational Parameters
+------------------------
 dist: int
     maximum distance from each probe to scan for adjacent peaks (80)
 acf-dist: int
@@ -93,8 +91,8 @@ no_fdr: bool
 genomic_control: bool
     correct input pvalues for genomic control
 
-display/output options:
------------------------
+Display/output Paramters
+------------------------
 verbose: bool -- default False
     Display additional processing information on screen.
 prefix: str
@@ -112,6 +110,11 @@ tissue: str
     if specified, adds additional columns to the annotation output with the expression levels for identified genes
     in any/all tissue(s) that match the keyword. (e.g. if your methylation samples are whole blood,
     specify `tissue=blood`) For all 54 tissues, use `tissue=all`
+
+Returns
+-------
+list
+    A list of files created.
     """
     kw = {
         'col_num': 3, # chrom | start | end | pvalue | name
@@ -141,7 +144,7 @@ tissue: str
         manifest = methylprep.Manifest(methylprep.ArrayType(manifest_or_array_type))
 
     try:
-        results = pipeline(kw['col_num'], kw['step'], kw['dist'],
+        results = _pipeline(kw['col_num'], kw['step'], kw['dist'],
             kw.get('acf_dist', int(round(0.33333 * kw['dist'], -1))),
             kw.get('prefix',''), kw.get('threshold', kw['seed']),
             kw['seed'], kw['table'], kw['bed_files'],
@@ -264,10 +267,10 @@ tissue: str
     return files_created
 
 
-def pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
+def _pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
         bed_files, mlog=True, region_filter_p=1, region_filter_n=None,
         genome_control=False, use_fdr=True, log_to_file=True, verbose=False):
-    """adapted from combined-pvalues (cpv) pipeline to work outside of CLI."""
+    """Internal pipeline: adapted from `combined-pvalues` (cpv) pipeline to work outside of a CLI."""
     # a hack to ensure local files can be imported
     # sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
     from cpv import acf, slk, fdr, peaks, region_p, stepsize, filter
@@ -430,4 +433,3 @@ def qqplot(lpys, ax_qq):
     ax_qq.axis('tight')
     ax_qq.axes.set_frame_on(True)
 """
-

@@ -1,11 +1,11 @@
-## differentially methylated regions (DMR) in methylize
-### adopted from `combined-pvalues` package
+##Differentially methylated regions (DMR) in methylize
+####*(adopted from the `combined-pvalues` package by Brend Pedersen et al, 2013)*
 
 ref: "Comb-p: software for combining, analyzing, grouping and correcting spatially correlated P-values" [doi: 10.1093/bioinformatics/bts545](https://pubmed.ncbi.nlm.nih.gov/22954632/)
 
 There are many similar packages
 
-### What are Differentially methylated regions (DMRs)?
+###What are Differentially methylated regions (DMRs)?
 Genomic regions where DNA methylation levels differ between two groups of samples. DNA methylation is associated with cell differentiation, regulation, and proliferation, so these regions indicate that nearby genes may be involved in transcription regulation. There are several different types of DMRs. These include:
 
 - tissue-specific DMR (tDMR),
@@ -15,7 +15,7 @@ Genomic regions where DNA methylation levels differ between two groups of sample
 - allele-specific DMR (AMR),
 - aging-specific DMR (aDMR).
 
-### How do run DMR
+###How do run DMR
 
 First, assuming you have processed data using `methylprep`, use `methylize` to convert a dataframe of beta or M-values into differentially-methylated-probe (DMP) statistics, using `methylize.diff_meth_pos`. You will need to provide the data along with a list of sample labels for how to separate the data into two (treatment / control) groups or more groups (levels of a phenotypic characteristic, such as age or BMI):
 
@@ -90,7 +90,7 @@ that match, so that you can further narrow down the search for relevant genomic 
 
 There are a lot of additional corrections that researchers make at this stage, and many of them are beyond the scope of `methylsuite`, but this function should get you started.
 
-#### gene annotation with UCSC Genome Browser
+####Gene annotation with UCSC Genome Browser
 
 University of California Santa Cruz maintains a large database of every version of the human genome and its meta data at https://genome.ucsc.edu/cgi-bin/hgTables. You can browse these database tables. IF you are using the latest genome build (hg38), diff_meth_regions will annotate your database using the `refGene` table. It also (partially) supports the `knownGene` and `ncbiRefSeq` tables, if you want to use those. This is useful for identifying genes that are
 nearby your regions of interest, and noting the tissue specificity of those genes, in exploring your data.
