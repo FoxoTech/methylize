@@ -9,7 +9,7 @@ jobs:
       - run: sudo chown -R circleci:circleci /usr/local/lib/python3.8/site-packages
       - restore_cache:
           # key: <projectname>-{{ .Branch }}-{{ checksum "Pipfile.lock" }}  projectname can be anything, so long as it matches save_cache below.
-          key: deps2-{{ .Branch }}-{{ checksum "requirements.txt" }}
+          key: dependencies-0-{{ .Branch }}-{{ checksum "requirements.txt" }}
       - run:
           command: |
             pip install pipenv
@@ -30,7 +30,6 @@ jobs:
             pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
             pipenv run coverage report
             pipenv run coverage html
-            pipenv run coverage xml
             pipenv run coveralls
             # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
             # pipenv run coverage run --omit '*tests*','*/home/*' setup.py test
