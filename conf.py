@@ -95,7 +95,7 @@ todo_include_todos = True
 # a list of builtin themes.
 #
 html_theme =  'sphinx_rtd_theme'
-html_logo = 'https://github.com/FoxoTech/methylize/blob/feature/v0.9.9/docs/source/foxo_logo_orange_black.png?raw=true' #'_static/foxo_logo_orange_black.png'
+html_logo = 'source/foxo_logo_orange_black.png'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
@@ -106,7 +106,7 @@ html_logo = 'https://github.com/FoxoTech/methylize/blob/feature/v0.9.9/docs/sour
 # Add any paths that contain custom static files (such as style sheets) here,
 # relative to this directory. They are copied after the builtin static files,
 # so a file named "default.css" will overwrite the builtin "default.css".
-html_static_path = ['_static']
+#html_static_path = ['_static']
 
 # Custom sidebar templates, must be a dictionary that maps document names
 # to template names.
