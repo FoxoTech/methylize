@@ -32,13 +32,16 @@ def fetch_genes(dmr_regions_file=None, tol=250, ref=None, tissue=None, sql=None,
     host=HOST, user=USER, password='', db=DB):
     """find genes that are adjacent to significantly different CpG regions provided.
 
-summary:
---------
+-------
+summary
+-------
+
 fetch_genes() annotates the DMR region output file, using the UCSC Genome Browser database as a reference
 as to what genes are nearby. This is an exploratory tool, as there are many versions of the human genome
 that map genes to slightly different locations.
 
 fetch_genes() is an EXPLORATORY tool and makes a number of simplicifications:
+
   - the DMR regions file saves one CpG probe name and location, even though clusters of probes may map to
   that nearby area.
   - it measures the distance from the start position of the one representative probe per region to any nearby
@@ -58,8 +61,10 @@ fetch_genes() is an EXPLORATORY tool and makes a number of simplicifications:
   And filter candidate genes to exclude those that are only expressed in your tissue during development,
   if your samples are from adults, and vice versa.
 
-arguments:
-----------
+---------
+arguments
+---------
+
 dmr_regions_file:
     pass in the output file from DMR function.
     Omit if you specify the `sql` kwarg instead.

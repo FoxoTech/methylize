@@ -42,8 +42,7 @@ genomic location against the phenotype data for those samples.
 Phenotypes can be provided as a list of string-based or integer binary data
 or as numeric continuous data.
 
-Inputs and Parameters
----------------------
+.. Input Parameters::
 
     meth_data:
         A pandas dataframe of methylation beta_values (or M-values) for
@@ -104,8 +103,7 @@ Inputs and Parameters
         'delete' - drop probes if NaNs are present in any sample
         'fast' - use adjacent sample probe value instead of average (much faster but less precise)
 
-Returns
--------
+.. Returns::
 
     A pandas dataframe of regression statistics with a row for each probe analyzed
     and columns listing the individual probe's regression statistics of:
@@ -121,20 +119,22 @@ Returns
     probes first. If q_cutoff is specified, only probes with significant q-values
     less than the cutoff will be returned in the dataframe.
 
-If Progress Bar Missing:
-    if you don't see a progress bar in your jupyterlab notebook, try this:
-    - conda install -c conda-forge nodejs
-    - jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
-Notes on imputation:
-    Because methylprep output contains missing values by default, this function requires user to either delete or impute missing values.
-  - This can be disabled, and it will throw a warning if NaNs present.
-  - default is to drop probes with NaNs.
-  - auto:
-    - If there are less than 30 samples, it will delete the missing rows.
-    - If there are >= 30 samples in the batch analyzed, it will replace NaNs with the
-    average value for that probe across all samples.
-  - User may specify: True, 'auto', False, 'delete', 'average'
+.. note::
+    Imputation: because methylprep output contains missing values by default, this function requires user to either delete or impute missing values.
+    - This can be disabled, and it will throw a warning if NaNs present.
+    - default is to drop probes with NaNs.
+    - auto:
+      - If there are less than 30 samples, it will delete the missing rows.
+      - If there are >= 30 samples in the batch analyzed, it will replace NaNs with the
+        average value for that probe across all samples.
+    - User may specify: True, 'auto', False, 'delete', 'average'
+
+    If Progress Bar Missing:
+      if you don't see a progress bar in your jupyterlab notebook, try this:
+      - conda install -c conda-forge nodejs
+      - jupyter labextension install @jupyter-widgets/jupyterlab-manager
+
     """
     #TODO
     # shrink_var:
