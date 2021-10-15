@@ -81,13 +81,17 @@ chrom  chromStart chromEnd         min_p  ...  z_sidak_p          name      gene
 ```
 
 This will reveal clusters of CpG probes that were significantly different and annotate these clusters with one or more
-nearby genes using the UCSC Genome Browser database. IF you pass in the `tissue=<your tissue type>` argument into
-the `diff_meth_regions` function, and that tissue type is one of the 54 that are part of the GTEx (genome expression levels in humans by tissue dataset), this file will also include a column showing the expression levels for any genes
-that match, so that you can further narrow down the search for relevant genomic interactions within each experiment.
+nearby genes using the UCSC Genome Browser database. Note the CSV file column headings: `genes, distances, descriptions`. In some cases, a single diff-meth-region can align with multiple genes. In that case you will be a comma separated list for these fields. The descriptions will be separated by a pipe "|" symbol. The distances are the number of base-pairs of separation between the start of the CpG probe and the gene coding start sequence. Only rows with significant region p-values will have annotation.
 
-There are a lot of additional corrections that researchers make at this stage, and many of them are beyond the scope of `methylsuite`, but this function should get you started.
+If you pass in the `tissue=<your tissue type>` argument into the `diff_meth_regions` function, and that tissue type is one of the 54 that are part of the GTEx (genome expression levels in humans by tissue dataset), this file will also include a column showing the expression levels for any genes that match, so that you can further narrow down the search for relevant genomic interactions within each experiment.
+
+There are a lot of additional corrections that researchers make at this stage, and many of them are beyond the scope of `methylsuite`, but this function should get you started. And you can export the output from this function into more sophisticated analysis tools.
 
 ####Gene annotation with UCSC Genome Browser
 
-University of California Santa Cruz maintains a large database of every version of the human genome and its meta data at https://genome.ucsc.edu/cgi-bin/hgTables. You can browse these database tables. IF you are using the latest genome build (hg38), diff_meth_regions will annotate your database using the `refGene` table. It also (partially) supports the `knownGene` and `ncbiRefSeq` tables, if you want to use those. This is useful for identifying genes that are
+University of California Santa Cruz maintains a large database of every version of the human genome and its meta data at https://genome.ucsc.edu/cgi-bin/hgTables. You can browse these database tables.
+
+![UCSC database](docs/source/Genome-Browser-UCSC-display.png?raw=true)
+
+If you are using the latest genome build (hg38), diff_meth_regions will annotate your database using the `refGene` table. It also (partially) supports the `knownGene` and `ncbiRefSeq` tables, if you want to use those. This is useful for identifying genes that are
 nearby your regions of interest, and noting the tissue specificity of those genes, in exploring your data.

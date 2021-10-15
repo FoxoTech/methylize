@@ -1,8 +1,7 @@
-`methylize` is a python package for analyzing output from Illumina methylation arrays. It complements `methylprep` and `methylcheck`. View on [ReadTheDocs.](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/)
+`methylize` is a python package for analyzing output from Illumina methylation arrays. It complements `methylprep` and `methylcheck` and provides methods for computing differentially methylated probes and regions, and annotating these regions with the UCSC Genome Browser.  View on [ReadTheDocs.](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/)
 
 [![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylize/badge/?version=latest)](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv) [![CircleCI](https://circleci.com/gh/FoxoTech/methylize/tree/master.svg?style=shield)](https://circleci.com/gh/FoxoTech/methylize/tree/master) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/099d26465bd64c2387afa063810a13e6)](https://www.codacy.com/gh/FoxoTech/methylize/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FOXOBioScience/methylize&amp;utm_campaign=Badge_Grade) [![Coverage Status](https://coveralls.io/repos/github/FoxoTech/methylize/badge.svg?branch=master)](https://coveralls.io/github/FoxoTech/methylize?branch=master)
 
-- [Overview](README.md)
 - [Differentially methylated position (DMP) regression, detection and visualation](docs/demo_diff_meth_pos.ipynb)
   - [Logistic Regression](docs/demo_diff_meth_pos.html#Testing-logistic-regression)
   - [Linear Regression](docs/demo_diff_meth_pos.html#Testing-linear-regression)
@@ -35,8 +34,8 @@ pip3 install methylize
 
 Installation will also install the other parts of the `methylsuite` (methylprep and methylcheck) if they are not already installed.
 
-If Progress Bar Missing:
-    if you don't see a progress bar in your jupyterlab notebook, try this:
+If progress bar is missing:
+    If you don't see a progress bar in your jupyterlab notebook, try this:
 
     - conda install -c conda-forge nodejs
     - jupyter labextension install @jupyter-widgets/jupyterlab-manager

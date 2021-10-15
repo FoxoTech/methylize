@@ -9,7 +9,7 @@ Getting Started
 
 .. toctree::
    :maxdepth: 1
-   :caption: Sections:
+   :caption: Contents:
 
    docs/demo_diff_meth_pos.ipynb
    docs/diff_meth_regions.md
@@ -20,8 +20,8 @@ Getting Started
 
 
 .. autosummary::
-  :toctree: _autosummary
-  :recursive:
+   :toctree: _autosummary
+   :recursive:
 
 Indices and tables
 ==================
