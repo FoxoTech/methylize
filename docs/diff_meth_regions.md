@@ -1,9 +1,6 @@
 ##Differentially methylated regions (DMR) in methylize
-####*(adopted from the `combined-pvalues` package by Brend Pedersen et al, 2013)*
 
-ref: "Comb-p: software for combining, analyzing, grouping and correcting spatially correlated P-values" [doi: 10.1093/bioinformatics/bts545](https://pubmed.ncbi.nlm.nih.gov/22954632/)
-
-There are many similar packages
+*Adopted from the `combined-pvalues` package by Brend Pedersen et al, 2013: Comb-p: software for combining, analyzing, grouping and correcting spatially correlated P-values* [doi: 10.1093/bioinformatics/bts545](https://pubmed.ncbi.nlm.nih.gov/22954632/)
 
 ###What are Differentially methylated regions (DMRs)?
 Genomic regions where DNA methylation levels differ between two groups of samples. DNA methylation is associated with cell differentiation, regulation, and proliferation, so these regions indicate that nearby genes may be involved in transcription regulation. There are several different types of DMRs. These include:
