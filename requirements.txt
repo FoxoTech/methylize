@@ -12,9 +12,9 @@ sphinxcontrib-apidoc
 m2r
 nbsphinx
 tqdm
+methylcheck
 methylprep
+pymysql
 # cpv on pypi won't install but this will
 -e git+git://github.com/brentp/combined-pvalues.git@v0.50.6#egg=cpv
-# cruzdb # gene annotation for DMR
-# pybedtools # swiss army knife for genomic algebra -- requires linux/macos and brew bedtools
-pymysql
+# FUTURE ADD pybedtools # swiss army knife for genomic algebra -- requires linux/macos and brew bedtools

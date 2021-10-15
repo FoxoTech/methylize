@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.abspath('.'))
 # -- Project information -----------------------------------------------------
 
 project = 'methylize'
-copyright = '2021, FOXO Bioscience'
+copyright = '2021, FOXO Technologies, inc.s'
 author = 'FOXO Bioscience'
 
 # The short X.Y version
@@ -42,7 +42,8 @@ extensions = [
     'sphinx.ext.autodoc',
     'sphinxcontrib.apidoc',
     'm2r',
-    'nbsphinx'
+    'nbsphinx',
+    'sphinx.ext.autosummary'
 ]
 
 # instead of CLI "sphinx-autodoc . _build/html" you write this
@@ -139,7 +140,7 @@ latex_elements = {
 #  author, documentclass [howto, manual, or own class]).
 latex_documents = [
     (master_doc, 'methylize.tex', 'methylize Documentation',
-     'Life Epigenetics', 'manual'),
+     'FOXO Technologies, inc.', 'manual'),
 ]
 
 
@@ -160,7 +161,7 @@ man_pages = [
 #  dir menu entry, description, category)
 texinfo_documents = [
     (master_doc, 'methylize', 'methylize Documentation',
-     author, 'methylize', 'One line description of project.',
+     author, 'methylize', 'Comparative methylation analysis.',
      'Miscellaneous'),
 ]
 
