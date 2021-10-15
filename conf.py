@@ -24,9 +24,9 @@ copyright = '2021, FOXO Technologies, inc.s'
 author = 'FOXO Bioscience'
 
 # The short X.Y version
-version = '1.0.0'
+version = '0.9'
 # The full version, including alpha/beta/rc tags
-release = '1.0'
+release = '0.9.9'
 
 
 # -- General configuration ---------------------------------------------------
@@ -44,16 +44,24 @@ extensions = [
     'm2r',
     'nbsphinx',
     'sphinx.ext.autosummary',
+    'sphinx.ext.doctest',
+    'sphinx.ext.intersphinx',
+    'sphinx.ext.todo',
+    'sphinx.ext.coverage',
+    'sphinx.ext.mathjax',
+    'sphinx.ext.ifconfig',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.githubpages',
 ]
 
 # instead of CLI "sphinx-autodoc . _build/html" you write this
 apidoc_module_dir = '.'
 apidoc_output_dir = '_sphinx_build'
 apidoc_excluded_paths = ['tests']
-apidoc_separate_modules = True
+apidoc_separate_modules = False
 
 # Add any paths that contain templates here, relative to this directory.
-templates_path = ['_sphinx_templates']
+# templates_path = ['_sphinx_templates']
 
 # The suffix(es) of source filenames.
 # You can specify multiple suffix as a list of string:
@@ -79,13 +87,15 @@ exclude_patterns = ['_sphinx_build', 'Thumbs.db', '.DS_Store', '**.ipynb_checkpo
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'sphinx'
 
+todo_include_todos = True
 
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
 # a list of builtin themes.
 #
-html_theme =  'sphinx_rtd_theme' #'alabaster'
+html_theme =  'sphinx_rtd_theme'
+html_logo = '_static/foxo_logo_orange_black.png'
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
