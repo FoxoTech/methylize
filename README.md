@@ -6,107 +6,34 @@
 - [Differentially methylated position (DMP) regression, detection and visualation](docs/demo_diff_meth_pos.ipynb)
   - [Logistic Regression](docs/demo_diff_meth_pos.html#Testing-logistic-regression)
   - [Linear Regression](docs/demo_diff_meth_pos.html#Testing-linear-regression)
-  - [volcano plot and mapping to chromosomes (manhattan plot)](docs/demo_diff_meth_pos.html#Testing-Manhattan-plot-visualizations)
+  - [Volcano plot and mapping to chromosomes (manhattan plot)](docs/demo_diff_meth_pos.html#Testing-Manhattan-plot-visualizations)
 - [Differentially methylated regions](docs/diff_meth_regions.md)
   - [Gene annotation with the UCSC Human Genome Browser](docs/diff_meth_regions.html#gene-annotation-with-ucsc-genome-browser)
 
-## Methylize Package
+##Methylize Package
 
 The `methylize` package contains both high-level APIs for processing data from local files and low-level functionality allowing you to analyze your data AFTER running `methylprep` and `methylcheck`. For greatest usability, import `methylize` into a Jupyer Notebook along with your processed sample data (a DataFrame of beta values or m-values and a separate DataFrame containing meta data about the samples).
 
 `Methylize` allows you to run linear or logistic regression on all probes and identify points of interest in the methylome where DNA is differentially modified. Then you can use these regression results to create *volcano plots* and *manhattan plots*.
 
-### Sample Manhattan Plot
+###Sample Manhattan Plot
 ![Manhattan Plot](https://github.com/FoxoTech/methylize/blob/master/docs/manhattan_example.png?raw=true)
 
 ![Manhattan Plot (alternate coloring)](https://github.com/FoxoTech/methylize/blob/master/docs/manhattan_example2.png?raw=true)
 
-### Sample Volcano Plot
+###Sample Volcano Plot
 ![Volcano Plot](https://github.com/FoxoTech/methylize/blob/master/docs/volcano_example.png?raw=true)
 
 Customizable: Plot size, color palette, and cutoff p-value lines can be set by the user.
 Exporting: You can export all probe statistics, or just the significant probes as CSV or python pickled DataFrame.
 
-## Installation
+##Installation
 
 ```python
-pip install methylize
+pip3 install methylize
 ```
 
-## differentially methylated position/probe (DMP) detection
-
-The `diff_meth_pos()` function searches for individual differentially methylated positions/probes
-(DMPs) by regressing the methylation M-value for each sample at a given
-genomic location against the phenotype data for those samples.
-
-Phenotypes can be provided as
-  - a list of string-based,
-  - integer binary data,
-  - numeric continuous data
-  - (TODO: use the methylprep generated meta-data dataframe as input)
-
-The function will coerge string labels for phenotype into 0s and 1s when running logistic regression.
-Only 2 phenotypes are allowed with logistic regression. Linear regression can take more than two phenotypes.
-
-### Inputs and Parameters
--------------------------
-
-    meth_data:
-        A pandas dataframe of methylation M-values for
-        where each column corresponds to a CpG site probe and each
-        row corresponds to a sample.
-    pheno_data:
-        A list or one dimensional numpy array of phenotypes
-        for each sample row in meth_data.
-        - Binary phenotypes can be presented as a list/array
-        of zeroes and ones or as a list/array of strings made up
-        of two unique words (i.e. "control" and "cancer"). The first
-        string in phenoData will be converted to zeroes, and the
-        second string encountered will be convered to ones for the
-        logistic regression analysis.
-        - Use numbers for phenotypes if running linear regression.
-    regression_method: (logistic | linear)
-        - Either the string "logistic" or the string "linear"
-        depending on the phenotype data available.
-        - Default: "linear"
-        - Phenotypes with only two options (e.g. "control" and "cancer") can be analyzed with a logistic regression
-        - Continuous numeric phenotypes (e.g. age) are required to run a linear regression analysis.
-    q_cutoff:
-        - Select a cutoff value to return only those DMPs that meet a
-        particular significance threshold. Reported q-values are
-        p-values corrected according to the model's false discovery
-        rate (FDR).
-        - Default: 1 -- returns all DMPs regardless of significance.
-    export:
-        - default: False
-        - if True or 'csv', saves a csv file with data
-        - if 'pkl', saves a pickle file of the results as a dataframe.
-        - USE q_cutoff to limit what gets saved to only significant results.
-            by default, q_cutoff == 1 and this means everything is saved/reported/exported.
-    filename:
-        - specify a filename for the exported file.
-        By default, if not specified, filename will be `DMP_<number of probes in file>_<number of samples processed>_<current_date>.<pkl|csv>`
-    shrink_var:
-        - If True, variance shrinkage will be employed and squeeze
-        variance using Bayes posterior means. Variance shrinkage
-        is recommended when analyzing small datasets (n < 10).
-        (NOT IMPLEMENTED YET)
-
-### Returns
-
-    A pandas dataframe of regression statistics with a row for each probe analyzed
-    and columns listing the individual probe's regression statistics of:
-        - regression coefficient
-        - lower limit of the coefficient's 95% confidence interval
-        - upper limit of the coefficient's 95% confidence interval
-        - standard error
-        - p-value (phenotype group A vs B - likelihood that the difference is significant for this probe/location)
-        - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
-        - FDR_QValue: p value, adjusted for multiple comparisons
-
-    The rows are sorted by q-value in ascending order to list the most significant
-    probes first. If q_cutoff is specified, only probes with significant q-values
-    less than the cutoff will be returned in the dataframe.
+Installation will also install the other parts of the `methylsuite` (methylprep and methylcheck) if they are not already installed.
 
 If Progress Bar Missing:
     if you don't see a progress bar in your jupyterlab notebook, try this:
@@ -115,7 +42,58 @@ If Progress Bar Missing:
     - jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 
-### Loading processed data
+##Differentially methylated position/probe (DMP) detection
+
+The `diff_meth_pos(meth_data, phenotypes)` function searches for individual differentially methylated positions/probes
+(DMPs) by regressing methylation `beta values` or `M-values` for each sample at a given
+genomic location against the phenotype data for those samples.
+
+###Phenotypes
+
+Can be provided as
+
+    - a list of string-based,
+    - integer binary data,
+    - numeric continuous data
+    - (TODO: use the methylprep generated meta-data dataframe as input)
+
+Only 2 phenotypes are allowed with logistic regression. Linear regression can take more than two phenotypes.
+The function will coerge string labels for phenotype into 0s and 1s when running logistic regression.
+
+For details on all of the other adjustable input parameters, refer to the API for [diff_meth_pos()](docs/source/modules.html#module-methylize.diff_meth_pos)
+
+###Returns
+A pandas dataframe of regression `statistics` with one row for each probe
+and these columns:
+
+    - regression coefficient
+    - lower limit of the coefficient's 95% confidence interval
+    - upper limit of the coefficient's 95% confidence interval
+    - standard error
+    - p-value (phenotype group A vs B - likelihood that the difference is significant for this probe/location)
+    - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
+    - FDR_QValue: p value, adjusted for multiple comparisons
+
+    The rows are sorted by q-value in ascending order to list the most significant
+    probes first. If q_cutoff is specified, only probes with significant q-values
+    less than the cutoff will be returned in the dataframe.
+
+##Differentially methylated regions
+Calculates and annotates differentially methylated regions (DMR) using the `combined-pvalues` pipeline and returns list of output files.
+
+    - calculates auto-correlation
+    - combines adjacent P-values
+    - performs false discovery adjustment
+    - finds regions of enrichment (i.e. series of adjacent low P-values)
+    - assigns significance to those regions
+    - annotates significant regions with possibly relevant nearby Genes, using the UCSC Genome Browser Database
+    - annotates candidate genes with expression levels for the sample tissue type, if user specifies the
+    sample's tissue type.
+    - returns everything in a CSV that can be imported into other Genomic analysis packages.
+
+For more details on customizing the inputs and outputs, see API for [`diff_meth_regions(stats, array_type)`](docs/source/modules.html#module-methylize.diff_meth_regions)
+
+##Loading processed data
 
 Assuming you previously used `methylprep` to process a data set like this:
 
