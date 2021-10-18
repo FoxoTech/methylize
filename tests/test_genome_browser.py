@@ -21,7 +21,7 @@ class TestGenome():
     expected_match_tol_100 = (499, 65) # tissue='all'
     expected_match_tol_250_ncbi = (1626, 11)
     expected_match_tol_100_ncbi = (760, 11)
-    expected_match_tol_250_known = (2605, 11)
+    expected_match_tol_250_known = (2637, 11) # (2605, 11)
     expected_match_tol_100_known = (1350, 11)
 
     def test_fetch_genes_sql(self):
