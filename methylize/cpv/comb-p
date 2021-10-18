@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+from __future__ import print_function
+import sys
+__actions = ("acf", "slk", "fdr", "peaks", "region_p", "hist", "splot",
+             "manhattan", "pipeline", "filter")
+def main():
+    if len(sys.argv) == 1 \
+            or sys.argv[1] in ("-h", "--help") \
+            or sys.argv[1] not in __actions:
+        print("""
+Tools for viewing and adjusting p-values in BED files.
+
+   Contact: Brent Pedersen - bpederse@gmail.com
+   License: BSD
+
+To run, indicate one of:
+
+   acf       - calculate autocorrelation within BED file
+   slk       - Stouffer-Liptak-Kechris correction of correlated p-values
+   fdr       - Benjamini-Hochberg correction of p-values
+   peaks     - find peaks in a BED file.
+   region_p  - generate SLK p-values for a region (of p-values)
+   filter    - filter region_p output on size and p and add coef/t
+   hist      - plot a histogram of a column and check for uniformity.
+   manhattan - a manhattan plot of values in a BED file.
+   pipeline  - run acf, slk, fdr, peaks, region_p in succesion
+
+NOTE: most of these assume *sorted* BED files.
+SEE: https://github.com/brentp/combined-pvalues for documentation
+    """, file=sys.stderr)
+        sys.exit()
+
+    # the action is the first argument.
+    action = sys.argv.pop(1)
+    module = getattr(__import__('cpv', fromlist=[action]), action)
+    module.main()
+
+if __name__ == "__main__":
+    main()

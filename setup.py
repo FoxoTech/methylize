@@ -42,7 +42,7 @@ setup(
         'matplotlib',
         'methylprep',
         'methylcheck',
-        'cpv', #'cpv @ git+https://github.com/brentp/combined-pvalues.git@v0.50.6#egg=cpv',
+        #'cpv', #'cpv @ git+https://github.com/brentp/combined-pvalues.git@v0.50.6#egg=cpv',
         'pymysql',
     ],
     setup_requires=['pytest-runner'],
