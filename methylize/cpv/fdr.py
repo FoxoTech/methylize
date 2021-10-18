@@ -4,12 +4,13 @@ perform Benjamini-Hochberg FDR correction on a BED file with p-values.
 from __future__ import print_function
 import argparse
 import toolshed as ts
-from _common import bediter
+#from _common import bediter
+from methylize.cpv import bediter, get_col_num
 try:
     from itertools import izip
 except ImportError:
     izip = zip
-from _common import get_col_num
+#from _common import get_col_num
 import numpy as np
 import sys
 

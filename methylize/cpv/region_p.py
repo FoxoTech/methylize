@@ -11,12 +11,13 @@ from collections import defaultdict
 
 from interlap import InterLap
 
-from _common import bediter, get_col_num
+#from _common import bediter, get_col_num
 from itertools import chain, groupby
 from operator import itemgetter
-from slk import gen_sigma_matrix
-from acf import acf
-from stouffer_liptak import stouffer_liptak, z_score_combine
+#from slk import gen_sigma_matrix
+#from acf import acf
+#from stouffer_liptak import stouffer_liptak, z_score_combine
+import methylize
 
 from scipy.stats import norm
 from numpy.linalg import cholesky as chol
@@ -47,18 +48,18 @@ def gen_correlated(sigma, n, observed=None):
 def sl_sim(sigma, ps, nsims, sample_distribution=None):
     N = 0
     print("nsims:", nsims, file=sys.stderr)
-    w0 = stouffer_liptak(ps, sigma)["p"]
+    w0 = methylize.cpv.stouffer_liptak(ps, sigma)["p"]
     # TODO parallelize here.
     for i in range(10):
         for prow in gen_correlated(sigma, nsims/10, sample_distribution):
-            s = stouffer_liptak(prow, sigma)
+            s = methylize.cpv.stouffer_liptak(prow, sigma)
             if not s["OK"]: 1/0
             if s["p"] <= w0: N += 1
 
     return N / float(nsims)
 
 def run(args):
-    col_num = get_col_num(args.c)
+    col_num = methylize.cpv.get_col_num(args.c)
     # order in results is slk, uniform, sample
     for region_line, slk, slk_sidak, sim_p in region_p(args.pvals, args.regions,
             col_num, args.step, z=True):
@@ -89,7 +90,7 @@ def _gen_acf(region_info, fpvals, col_num, step):
     if len(lags) > 100:
         print("# !! this could take a looong time", file=sys.stderr)
         print("# !!!! consider using a larger step size (-s)", file=sys.stderr)
-    acfs = acf(fpvals, lags, col_num, simple=True)
+    acfs = methylize.cpv.acf(fpvals, lags, col_num, simple=True)
     print("# Done with one-time ACF calculation", file=sys.stderr)
     return acfs
 
@@ -99,7 +100,7 @@ def get_total_coverage(fpvals, col_num, step, out_val):
     Used for the sidak correction
     """
     total_coverage = 0
-    for key, chrom_iter in groupby(bediter(fpvals, col_num),
+    for key, chrom_iter in groupby(methylize.cpv.bediter(fpvals, col_num),
             itemgetter('chrom')):
         bases = set([])
         for feat in chrom_iter:
@@ -148,7 +149,7 @@ def _get_ps_in_regions(tree, fpvals, col_num):
     find the pvalues associated with each region
     """
     region_info = defaultdict(list)
-    for row in bediter(fpvals, col_num):
+    for row in methylize.cpv.bediter(fpvals, col_num):
         for region in tree[row['chrom']].find((row['start'], row['end'])):
             region_len = max(1, region[1] - region[0])
             region_tup = tuple(region[-1])
@@ -182,13 +183,13 @@ def region_p(fpvals, fregions, col_num, step, z=True):
     # regions first and then create ACF for the longest one.
     print("%i bases used as coverage for sidak correction" % \
                                 (total_coverage), file=sys.stderr)
-    sample_distribution = np.array([b["p"] for b in bediter(fpvals,
+    sample_distribution = np.array([b["p"] for b in methylize.cpv.bediter(fpvals,
                                                                 col_num)])
 
-    combine = z_score_combine if z else stouffer_liptak
+    combine = methylize.cpv.z_score_combine if z else methylize.cpv.stouffer_liptak
     for region, prows in region_info.items():
         # gen_sigma expects a list of bed dicts.
-        sigma = gen_sigma_matrix(prows, acfs)
+        sigma = methylize.cpv.gen_sigma_matrix(prows, acfs)
         ps = np.array([prow["p"] for prow in prows])
         if ps.shape[0] == 0:
             print("bad region", region, file=sys.stderr)

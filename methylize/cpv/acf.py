@@ -14,10 +14,10 @@ except ImportError:
     from itertools import groupby, chain
     izip = zip
     xrange = range
-from cpv._common import bediter, pairwise, get_col_num, get_map
-
+import methylize
 
 def create_acf_list(lags):
+    pairwise = methylize.cpv.bediter
     acfs = []
     if len(lags) == 1:
         lags.append(lags[0])
@@ -87,7 +87,8 @@ def acf(fnames, lags, col_num0, partial=True, simple=False, mlog=True):
     implementation.
     """
     # reversing allows optimization below.
-    imap = get_map()
+    imap = methylize_cpv.get_map()
+    bediter = methylize.cpv.bediter
 
     arg_list = [] # chaining
     for fname in fnames:

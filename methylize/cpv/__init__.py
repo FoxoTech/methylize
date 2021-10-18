@@ -1,10 +1,10 @@
 # Couldn't get the 'cpv' package to import/install via PyPI so copying the relevant files here.
 # reason: depends on ez_install, a deprecated method in python 3.7+
-__author__ = 'Brent Pedersen'
-__author_email__ = 'bpederse@gmail.com'
-__license__ = 'MIT'
+__author__ = "Brent Pedersen"
+__author_email__ = "bpederse@gmail.com"
+__license__ = "MIT"
 __version__ = "0.50.6"
-__year__ = 2013
+__year__ = "2013"
 
 """ Reminder about what a MIT license means:
 
@@ -21,3 +21,18 @@ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABI
 CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 """
+
+from ._common import * # genome_control_adjust, genomic_control, bediter
+from .acf import *
+# comb-p is disabled, a CLI interface
+from .fdr import *
+from .filter import *
+# hist - Not Implemented Yet
+from .manhattan import *
+from .peaks import *
+# pipeline is replaced by a local version (methylize.diff_meth_regions._pipeline)
+# qvality - Not Implemented Yet
+from .region_p import *
+from .slk import *
+from .stepsize import *
+from .stouffer_liptak import *

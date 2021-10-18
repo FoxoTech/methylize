@@ -12,7 +12,7 @@ import methylprep
 import methylcheck
 # from cpv.pipeline import pipeline -- copied and modified here
 import numpy as np
-from cpv._common import bediter, genomic_control
+from methylize.cpv._common import bediter, genomic_control
 from pathlib import Path
 from .progress_bar import * # tqdm, in_notebook
 

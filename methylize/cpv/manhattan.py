@@ -51,7 +51,7 @@ except NameError:
 
 
 import numpy as np
-from cpv._common import bediter, get_col_num, genomic_control
+from ._common import bediter, get_col_num, genomic_control
 
 def chr_cmp(a, b):
     a, b = a[0], b[0]
