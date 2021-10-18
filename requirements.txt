@@ -20,3 +20,4 @@ pymysql
 #-e git+git://github.com/brentp/combined-pvalues.git@v0.50.6#egg=cpv
 # FUTURE ADD pybedtools # swiss army knife for genomic algebra -- requires linux/macos and brew bedtools
 toolshed
+interlap
