@@ -51,13 +51,13 @@ genomic location against the phenotype data for those samples.
 
 Can be provided as
 
-    - a list of string-based,
+    - a list of strings,
     - integer binary data,
     - numeric continuous data
-    - (TODO: use the methylprep generated meta-data dataframe as input)
+    - pandas series or numpy array
 
 Only 2 phenotypes are allowed with logistic regression. Linear regression can take more than two phenotypes.
-The function will coerge string labels for phenotype into 0s and 1s when running logistic regression.
+The function will coerge string labels for phenotype into 0s and 1s when running logistic regression. To use the meta data associated with a dataset, you would need to pass in the column of your meta dataframe as a list or series. The order of the items in the phenotype should match the order of samples in the beta values or M-values.
 
 For details on all of the other adjustable input parameters, refer to the API for [diff_meth_pos()](docs/source/modules.html#module-methylize.diff_meth_pos)
 
@@ -78,7 +78,7 @@ and these columns:
     less than the cutoff will be returned in the dataframe.
 
 ##Differentially methylated regions
-Calculates and annotates differentially methylated regions (DMR) using the `combined-pvalues` pipeline and returns list of output files.
+Pass in your DMP stats dataframe, and it calculates and annotates differentially methylated regions (DMR) using the `combined-pvalues` pipeline and returns list of output files.
 
     - calculates auto-correlation
     - combines adjacent P-values
@@ -90,7 +90,7 @@ Calculates and annotates differentially methylated regions (DMR) using the `comb
     sample's tissue type.
     - returns everything in a CSV that can be imported into other Genomic analysis packages.
 
-For more details on customizing the inputs and outputs, see API for [`diff_meth_regions(stats, array_type)`](docs/source/modules.html#module-methylize.diff_meth_regions)
+For more details on customizing the inputs and outputs, see API for the [diff_meth_regions(stats, array_type)](docs/source/modules.html#module-methylize.diff_meth_regions) function.
 
 ##Loading processed data
 
@@ -102,14 +102,15 @@ python -m methylprep -v process -d GSE130030 --betas
 
 This creates two files, `beta_values.pkl` and `sample_sheet_meta_data.pkl`. You can load both in `methylize` like this:
 
-Navigate to the `GSE130030` folder created by `methylrep`, and start a python interpreter:
+Navigate to the folder where `methylrep` saved its processed files, and start a python interpreter:
 ```python
 >>>import methylize
 >>>data,meta = methylize.load_both()
 INFO:methylize.helpers:loaded data (485512, 14) from 1 pickled files (0.159s)
 INFO:methylize.helpers:meta.Sample_IDs match data.index (OK)
 ```
-Or if you are running in a notebook, specify the full path:
+
+Or if you are running in a notebook, specify the path:
 ```python
 import methylize
 data,meta = methylize.load_both('<path_to...>/GSE105018')
