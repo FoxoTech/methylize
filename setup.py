@@ -36,8 +36,8 @@ setup(
     packages=find_packages(),
     include_package_data=True,
     install_requires=[
+        'pandas',    
         'numpy',
-        'pandas',
         'scipy',
         'statsmodels',
         'matplotlib',
