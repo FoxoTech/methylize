@@ -1,12 +1,11 @@
 numpy>=1.18.5
-pandas>=1.2,<1.3
+pandas>=1.3.0
 scipy>=1.2.3
 matplotlib
 statsmodels
 joblib
 pytest
 coverage
-# coveralls-python -- broke readthedocs
 sphinx>=1.4
 sphinxcontrib-apidoc
 m2r
@@ -15,7 +14,6 @@ tqdm
 methylcheck
 methylprep
 pymysql
-# cpv --- using a local copy of files, because ez_install deprecated
 # cpv on pypi won't install but this will
 #-e git+git://github.com/brentp/combined-pvalues.git@v0.50.6#egg=cpv
 # FUTURE ADD pybedtools # swiss army knife for genomic algebra -- requires linux/macos and brew bedtools

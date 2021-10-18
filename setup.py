@@ -30,6 +30,7 @@ setup(
     keywords='analysis methylation dna data processing life epigenetics illumina parallelization',
     url='https://github.com/FOXOBioScience/methylize',
     license='MIT',
+    license_files = ('LICENSE.txt',),
     author='FOXO Bioscience',
     author_email='info@FOXOBioScience.com',
     packages=find_packages(),
