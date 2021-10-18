@@ -17,7 +17,7 @@ except ImportError:
 import methylize
 
 def create_acf_list(lags):
-    pairwise = methylize.cpv.bediter
+    pairwise = methylize.cpv.pairwise
     acfs = []
     if len(lags) == 1:
         lags.append(lags[0])
@@ -87,7 +87,7 @@ def acf(fnames, lags, col_num0, partial=True, simple=False, mlog=True):
     implementation.
     """
     # reversing allows optimization below.
-    imap = methylize_cpv.get_map()
+    imap = methylize.cpv.get_map()
     bediter = methylize.cpv.bediter
 
     arg_list = [] # chaining
