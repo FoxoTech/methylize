@@ -27,7 +27,7 @@ ipykernel = "*"
 [packages]
 tqdm = "*"
 numpy = "*"
-pandas = "==1.2.5"
+pandas = "*" #"==1.2.5"
 scipy = "*"
 statsmodels = "*"
 matplotlib = "*"

@@ -9,24 +9,24 @@
 - [Differentially methylated regions](docs/diff_meth_regions.md)
   - [Gene annotation with the UCSC Human Genome Browser](docs/diff_meth_regions.html#gene-annotation-with-ucsc-genome-browser)
 
-##Methylize Package
+## Methylize Package
 
 The `methylize` package contains both high-level APIs for processing data from local files and low-level functionality allowing you to analyze your data AFTER running `methylprep` and `methylcheck`. For greatest usability, import `methylize` into a Jupyer Notebook along with your processed sample data (a DataFrame of beta values or m-values and a separate DataFrame containing meta data about the samples).
 
 `Methylize` allows you to run linear or logistic regression on all probes and identify points of interest in the methylome where DNA is differentially modified. Then you can use these regression results to create *volcano plots* and *manhattan plots*.
 
-###Sample Manhattan Plot
+### Sample Manhattan Plot
 ![Manhattan Plot](https://github.com/FoxoTech/methylize/blob/master/docs/manhattan_example.png?raw=true)
 
 ![Manhattan Plot (alternate coloring)](https://github.com/FoxoTech/methylize/blob/master/docs/manhattan_example2.png?raw=true)
 
-###Sample Volcano Plot
+### Sample Volcano Plot
 ![Volcano Plot](https://github.com/FoxoTech/methylize/blob/master/docs/volcano_example.png?raw=true)
 
 Customizable: Plot size, color palette, and cutoff p-value lines can be set by the user.
 Exporting: You can export all probe statistics, or just the significant probes as CSV or python pickled DataFrame.
 
-##Installation
+## Installation
 
 ```python
 pip3 install methylize
@@ -41,13 +41,13 @@ If progress bar is missing:
     - jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 
-##Differentially methylated position/probe (DMP) detection
+## Differentially methylated position/probe (DMP) detection
 
 The `diff_meth_pos(meth_data, phenotypes)` function searches for individual differentially methylated positions/probes
 (DMPs) by regressing methylation `beta values` or `M-values` for each sample at a given
 genomic location against the phenotype data for those samples.
 
-###Phenotypes
+### Phenotypes
 
 Can be provided as
 
@@ -61,7 +61,7 @@ The function will coerge string labels for phenotype into 0s and 1s when running
 
 For details on all of the other adjustable input parameters, refer to the API for [diff_meth_pos()](docs/source/modules.html#module-methylize.diff_meth_pos)
 
-###Returns
+### Returns
 A pandas dataframe of regression `statistics` with one row for each probe
 and these columns:
 
@@ -77,7 +77,7 @@ and these columns:
     probes first. If q_cutoff is specified, only probes with significant q-values
     less than the cutoff will be returned in the dataframe.
 
-##Differentially methylated regions
+## Differentially methylated regions
 Pass in your DMP stats dataframe, and it calculates and annotates differentially methylated regions (DMR) using the `combined-pvalues` pipeline and returns list of output files.
 
     - calculates auto-correlation
@@ -92,7 +92,7 @@ Pass in your DMP stats dataframe, and it calculates and annotates differentially
 
 For more details on customizing the inputs and outputs, see API for the [diff_meth_regions(stats, array_type)](docs/source/modules.html#module-methylize.diff_meth_regions) function.
 
-##Loading processed data
+## Loading processed data
 
 Assuming you previously used `methylprep` to process a data set like this:
 

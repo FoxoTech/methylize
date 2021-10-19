@@ -1,5 +1,7 @@
 # Release History
 
+## v1.0.0
+
 ## v0.9.9
 - Added a differentially methylated regions (DMR) functions that takes the output of the `diff_meth_pos` (DMP) function.
   - DMP maps differences to chromosomes; DMR maps differences to specific genomic locii, and requires more processing.
