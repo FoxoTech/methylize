@@ -63,3 +63,6 @@ class TestGenome():
             results = methylize.fetch_genes(fake_source, verbose=True)
         print(str(e_msg.value))
         Path(fake_source).unlink()
+
+    if Path('tests','test_dmr_regions_genes.csv').exists():
+        Path('tests','test_dmr_regions_genes.csv').unlink()
