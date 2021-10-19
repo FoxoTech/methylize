@@ -85,9 +85,10 @@ def load_color_schemes():
         'Dark2', 'Set1', 'Set2', 'Set3',
         'tab10', 'tab20', 'tab20b', 'tab20c']
     }
-    color_schemes['Gray'] = matplotlib.colors.ListedColormap(['whitesmoke','lightgray','silver','darkgray','gray','dimgray','black'])
-    color_schemes['Gray2'] = matplotlib.colors.ListedColormap(['silver','gray'])
-    color_schemes['Gray3'] = matplotlib.colors.ListedColormap(['darkgrey','black'])
+    color_schemes['Gray'] = matplotlib.colors.ListedColormap(['darkgrey','black'])
+    color_schemes['Gray2'] = matplotlib.colors.ListedColormap(['darkgrey','gray'])
+    color_schemes['Gray3'] = matplotlib.colors.ListedColormap(['whitesmoke','lightgray','silver','darkgray','gray','dimgray','black'])
+    color_schemes['Gray4'] = matplotlib.colors.ListedColormap(['slategrey','silver'])
     color_schemes['Volcano'] = matplotlib.colors.ListedColormap(['tab:red','tab:blue','silver'])
     color_schemes['default'] = matplotlib.colors.ListedColormap(['mistyrose', 'navajowhite', 'palegoldenrod', 'yellowgreen', 'mediumseagreen', 'powderblue', 'skyblue',  'lavender', 'plum', 'palevioletred'])
 load_color_schemes()

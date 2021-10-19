@@ -10,9 +10,10 @@ default_backend = matplotlib.get_backend()
 import matplotlib.pyplot as plt
 import methylprep
 import methylcheck
-# from cpv.pipeline import pipeline -- copied and modified here
 import numpy as np
-from cpv._common import bediter, genomic_control
+# from cpv.pipeline import pipeline -- copied and modified here
+#from methylize.cpv._common import bediter, genomic_control
+import methylize
 from pathlib import Path
 from .progress_bar import * # tqdm, in_notebook
 
@@ -87,13 +88,16 @@ Computational Parameters:
         minimum size of a genomic region (0.05)
     no_fdr: bool
         don't use FDR
-    genomic_control: bool
-        correct input pvalues for genomic control
+    genome_control: bool
+        correct input pvalues for genome control (inflation factor). This reduces the confounding effects
+        of population stratitication in EWAS data.
 
 Display/output Paramters:
 
     verbose: bool -- default False
         Display additional processing information on screen.
+    plot: bool -- default True
+        False will suppress the manhattan plot step.
     prefix: str
         prefix that gets appended to all output files (e.g. 'dmr' becomes 'dmr_regions.csv')
     region_filter_p:
@@ -149,11 +153,13 @@ Returns:
             kw['seed'], kw['table'], kw['bed_files'],
             region_filter_p = kw.get('region_filter_p',1),
             region_filter_n = kw.get('region_filter_n'),
-            genome_control=False, use_fdr=not kw.get('no_fdr',False),
+            genome_control=kw.get('genome_control', False), use_fdr=not kw.get('no_fdr',False),
             log_to_file=True, verbose=kw.get('verbose',False))
         if results["result"] != "OK":
             LOGGER.warning(results)
     except Exception as e:
+        import traceback
+        LOGGER.error(traceback.format_exc())
         LOGGER.error(e)
     # add probe names back into these files:
     files_created = [
@@ -225,13 +231,14 @@ Returns:
             except:
                 continue
 
-    try:
-        manhattan_cols = {'region-p':'PValue', '#chrom':'chromosome', 'start': 'MAPINFO'}
-        _fdr_ = pd.read_csv(kw['prefix'] + '.fdr.bed.gz', sep='\t').rename(columns=manhattan_cols).set_index('name')
-        manhattan_plot(_fdr_, manifest)
-    except Exception as e:
-        if kw.get('verbose',False) == True:
-            LOGGER.error("Could not produce the manhattan plot: {e}")
+    if kw.get('plot') == True:
+        try:
+            manhattan_cols = {'region-p':'PValue', '#chrom':'chromosome', 'start': 'MAPINFO'}
+            _fdr_ = pd.read_csv(kw['prefix'] + '.fdr.bed.gz', sep='\t').rename(columns=manhattan_cols).set_index('name')
+            manhattan_plot(_fdr_, manifest)
+        except Exception as e:
+            if kw.get('verbose',False) == True:
+                LOGGER.error("Could not produce the manhattan plot: {e}")
 
     if stats_series != {}:
         # problem: manifest is unique but FDR/SLK, so need to look up
@@ -241,14 +248,14 @@ Returns:
         #--- cannot DO: stats_series['chrom'] = chr_start_end[ chr_start_end.index.isin(probe_index) ]
         # _file = f"{kw.get('prefix','')}.fdr.bed.gz"
         # concat fails because FDR/SLK probes can repeat in index. must merge first.
-        stats_df = pd.concat(list(stats_series.values()), axis=1)
         try:
+            stats_df = pd.concat(list(stats_series.values()), axis=1)
             stats_df = stats_df.merge(chr_start_end, left_index=True, right_index=True)
+            stats_file = f"{kw.get('prefix','')}_stats.csv"
+            stats_df.to_csv(stats_file)
+            files_created.append(stats_file)
         except Exception as e:
-            LOGGER.error(f'Could not include chrom | chromStart | chromEnd in stats file: {e}')
-        stats_file = f"{kw.get('prefix','')}_stats.csv"
-        stats_df.to_csv(stats_file)
-        files_created.append(stats_file)
+            LOGGER.error(f'Could not include chrom | chromStart | chromEnd in stats file: {e} (some probes appear in multiple results rows)')
 
     # cruzdb is python2x only, and hasn't been maintained since 2014. So we wrote our own UCSC interface function: fetch_genes
     regions_stats_file = Path(f"{kw.get('prefix','')}_regions.csv")
@@ -266,19 +273,19 @@ Returns:
     return files_created
 
 
-def _pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
+def _pipeline(col_num0, step, dist, acf_dist, prefix, threshold, seed, table,
         bed_files, mlog=True, region_filter_p=1, region_filter_n=None,
         genome_control=False, use_fdr=True, log_to_file=True, verbose=False):
     """Internal pipeline: adapted from `combined-pvalues` (cpv) pipeline to work outside of a CLI."""
     # a hack to ensure local files can be imported
     # sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-    from cpv import acf, slk, fdr, peaks, region_p, stepsize, filter
-    from cpv._common import genome_control_adjust, genomic_control, bediter
+    #from cpv import acf, slk, fdr, peaks, region_p, stepsize, filter
+    #from cpv._common import genome_control_adjust, genomic_control, bediter
     import operator
 
 
     if step is None:
-        step = min(acf_dist, stepsize.stepsize(bed_files, col_num))
+        step = min(acf_dist, methylize.cpv.stepsize(bed_files, col_num0))
         if verbose: LOGGER.info(f"calculated stepsize as: {step}")
 
     lags = list(range(1, acf_dist, step))
@@ -287,7 +294,7 @@ def _pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
     prefix = prefix.rstrip(".")
 
     # ACF: auto-correlation
-    putative_acf_vals = acf.acf(bed_files, lags, col_num, simple=False,
+    putative_acf_vals = methylize.cpv.acf(bed_files, lags, col_num0, simple=False,
                                 mlog=mlog)
     acf_vals = []
     # go out to max requested distance but stop once an autocorrelation
@@ -306,13 +313,14 @@ def _pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
             sys_args = " ".join(sys.argv[1:])
             print(sys_args + "\n", file=fh) #### <<<--- only catch command line args
             import datetime
-            print("date: %s" % datetime.datetime.today(), file=fh)
+            timestamp = datetime.datetime.today()
+            print("date: %s" % timestamp, file=fh)
             from .__init__ import __version__
             print("version:", __version__, file=fh)
             if verbose: LOGGER.info(f"{sys_args} | {timestamp} | {__version__}")
 
         with open(prefix + ".acf.txt", "w") as fh:
-            acf_vals = acf.write_acf(acf_vals, fh)
+            acf_vals = methylize.cpv.write_acf(acf_vals, fh)
             print("wrote: %s" % fh.name, file=fh)
         if verbose: LOGGER.info(f"ACF: {acf_vals}")
     else:
@@ -321,7 +329,7 @@ def _pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
     spvals, opvals = array.array('f'), array.array('f')
     with ts.nopen(prefix + ".slk.bed.gz", "w") as fhslk:
         fhslk.write('#chrom\tstart\tend\tp\tregion-p\n')
-        for chrom, results in slk.adjust_pvals(bed_files, col_num, acf_vals):
+        for chrom, results in methylize.cpv.slk.adjust_pvals(bed_files, col_num0, acf_vals):
             fmt = chrom + "\t%i\t%i\t%.4g\t%.4g\n"
             for row in results:
                 row = tuple(row)
@@ -329,29 +337,30 @@ def _pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
                 opvals.append(row[-2])
                 spvals.append(row[-1])
 
-    if verbose: LOGGER.info(f"Original lambda: {genomic_control(opvals)}")
+    if verbose: LOGGER.info(f"Original lambda (genomic control): {methylize.cpv.genomic_control(opvals)}")
     del opvals
 
-    gc_lambda = genomic_control(spvals)
+    gc_lambda = methylize.cpv.genomic_control(spvals)
     if verbose: LOGGER.info(f"wrote: {fhslk.name} with lambda: {gc_lambda}")
 
     if genome_control:
-        fhslk = ts.nopen(prefix + ".slk.gc.bed.gz", "w")
-        adj = genome_control_adjust([d['p'] for d in bediter(prefix + ".slk.bed.gz", -1)])
-        for i, line in enumerate(ts.nopen(prefix + ".slk.bed.gz")):
-            print("%s\t%.5g" % (line.rstrip("\r\n"), adj[i]), file=fhslk)
-
-        fhslk.close()
-        if verbose: LOGGER.info(f"wrote: {fhslk.name}")
+        # adjust p-values by the genomic inflance control factor, lambda
+        # see https://en.wikipedia.org/wiki/Genomic_control
+        # or https://onlinelibrary.wiley.com/doi/abs/10.1111/j.0006-341X.1999.00997.x for explanation
+        adj = methylize.cpv.genome_control_adjust([d['p'] for d in methylize.cpv.bediter(prefix + ".slk.bed.gz", -1)])
+        slk_df = pd.read_csv(prefix + ".slk.bed.gz", sep='\t')
+        slk_df['original_p'] = slk_df['p']
+        slk_df['p'] = adj
+        slk_df.to_csv(prefix + ".slk.bed.gz", sep='\t', index=False)
 
     with ts.nopen(prefix + ".fdr.bed.gz", "w") as fh:
         fh.write('#chrom\tstart\tend\tp\tregion-p\tregion-q\n')
-        for bh, l in fdr.fdr(fhslk.name, -1):
+        for bh, l in methylize.cpv.fdr(fhslk.name, -1):
             fh.write("%s\t%.4g\n" % (l.rstrip("\r\n"), bh))
         if verbose: LOGGER.info(f"wrote: {fh.name}")
     fregions = prefix + ".regions.bed.gz"
     with ts.nopen(fregions, "w") as fh:
-        list(peaks.peaks(prefix + ".fdr.bed.gz", -1 if use_fdr else -2, threshold, seed,
+        list(methylize.cpv.peaks(prefix + ".fdr.bed.gz", -1 if use_fdr else -2, threshold, seed,
             dist, fh, operator.le))
     n_regions = sum(1 for _ in ts.nopen(fregions))
     if verbose: LOGGER.info(f"wrote: {fregions} ({n_regions} regions)")
@@ -372,7 +381,7 @@ def _pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
         import warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            for region_line, slk_p, slk_sidak_p, sim_p in region_p.region_p(
+            for region_line, slk_p, slk_sidak_p, sim_p in methylize.cpv.region_p(
                                    prefix + ".slk.bed.gz",
                                    prefix + ".regions.bed.gz", -2,
                                    step):
@@ -392,7 +401,7 @@ def _pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
     -- combines regions from multiple datasets, I think.
     with ts.nopen(prefix + ".regions-t.bed", "w") as fh:
         N = 0
-        for i, toks in enumerate(filter.filter(bed_files[0], regions_bed, p_col_name=col_num)):
+        for i, toks in enumerate(filter.filter(bed_files[0], regions_bed, p_col_name=col_num0)):
             if i == 0: toks[0] = "#" + toks[0]
             else:
                 if float(toks[6]) > region_filter_p: continue
@@ -409,13 +418,12 @@ def _pipeline(col_num, step, dist, acf_dist, prefix, threshold, seed, table,
                 % (fh.name, region_filter_p, region_filter_n, N),
                 file=sys.stderr)
     """
-    if verbose:
-        from cpv import manhattan
-        regions = manhattan.read_regions(fh.name)
-        manhattan.manhattan(prefix + ".slk.bed.gz", 3,
-            prefix.rstrip(".") + ".manhattan.png",
-            False, ['#959899', '#484B4C'], "", False, None,
-            regions=regions, bonferonni=False)
+    #if verbose:
+    #    regions = methylize.cpv.read_regions(fh.name)
+    #    methylize.cpv.manhattan(prefix + ".slk.bed.gz", 3,
+    #        prefix.rstrip(".") + ".manhattan.png",
+    #        False, ['#959899', '#484B4C'], "", False, None,
+    #        regions=regions, bonferonni=False)
     return {"result": "OK"}
 
 

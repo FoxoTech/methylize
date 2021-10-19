@@ -25,7 +25,7 @@ def test_diff_meth_regions_default():
     #pheno, sample = run_once()
     sample = pd.read_pickle(Path('docs','example_data','test_sample_betas_450k.pkl'))
     pheno = pd.read_pickle(Path('docs','example_data','test_sample_betas_450k_phenotype.pkl'))
-    stats = methylize.diff_meth_pos(sample, pheno, verbose=False)
+    stats = methylize.diff_meth_pos(sample, pheno, verbose=False, regression_method='logistic')
     manifest_or_array_type = '450k'
     if not Path('docs','example_data', test_folder).exists():
         Path('docs','example_data', test_folder).mkdir()
@@ -62,7 +62,9 @@ def test_diff_meth_positions_no_regions_found():
     #manifest_or_array_type = 'epic+'
     import methylprep
     man = methylprep.Manifest(methylprep.ArrayType('epic+'))
-    files_created = methylize.diff_meth_regions(stats, manifest_or_array_type=man, prefix='docs/example_data/epic_plus/epic_plus',
+    files_created = methylize.diff_meth_regions(stats,
+        manifest_or_array_type=man, prefix='docs/example_data/epic_plus/epic_plus',
+        genome_build='OLD',
         genome_control=True)
     print(files_created)
     failures = []
