@@ -88,13 +88,16 @@ Computational Parameters:
         minimum size of a genomic region (0.05)
     no_fdr: bool
         don't use FDR
-    genomic_control: bool
-        correct input pvalues for genomic control
+    genome_control: bool
+        correct input pvalues for genome control (inflation factor). This reduces the confounding effects
+        of population stratitication in EWAS data.
 
 Display/output Paramters:
 
     verbose: bool -- default False
         Display additional processing information on screen.
+    plot: bool -- default True
+        False will suppress the manhattan plot step.
     prefix: str
         prefix that gets appended to all output files (e.g. 'dmr' becomes 'dmr_regions.csv')
     region_filter_p:
@@ -150,7 +153,7 @@ Returns:
             kw['seed'], kw['table'], kw['bed_files'],
             region_filter_p = kw.get('region_filter_p',1),
             region_filter_n = kw.get('region_filter_n'),
-            genome_control=False, use_fdr=not kw.get('no_fdr',False),
+            genome_control=kw.get('genome_control', False), use_fdr=not kw.get('no_fdr',False),
             log_to_file=True, verbose=kw.get('verbose',False))
         if results["result"] != "OK":
             LOGGER.warning(results)
@@ -228,13 +231,14 @@ Returns:
             except:
                 continue
 
-    try:
-        manhattan_cols = {'region-p':'PValue', '#chrom':'chromosome', 'start': 'MAPINFO'}
-        _fdr_ = pd.read_csv(kw['prefix'] + '.fdr.bed.gz', sep='\t').rename(columns=manhattan_cols).set_index('name')
-        manhattan_plot(_fdr_, manifest)
-    except Exception as e:
-        if kw.get('verbose',False) == True:
-            LOGGER.error("Could not produce the manhattan plot: {e}")
+    if kw.get('plot') == True:
+        try:
+            manhattan_cols = {'region-p':'PValue', '#chrom':'chromosome', 'start': 'MAPINFO'}
+            _fdr_ = pd.read_csv(kw['prefix'] + '.fdr.bed.gz', sep='\t').rename(columns=manhattan_cols).set_index('name')
+            manhattan_plot(_fdr_, manifest)
+        except Exception as e:
+            if kw.get('verbose',False) == True:
+                LOGGER.error("Could not produce the manhattan plot: {e}")
 
     if stats_series != {}:
         # problem: manifest is unique but FDR/SLK, so need to look up
@@ -244,14 +248,14 @@ Returns:
         #--- cannot DO: stats_series['chrom'] = chr_start_end[ chr_start_end.index.isin(probe_index) ]
         # _file = f"{kw.get('prefix','')}.fdr.bed.gz"
         # concat fails because FDR/SLK probes can repeat in index. must merge first.
-        stats_df = pd.concat(list(stats_series.values()), axis=1)
         try:
+            stats_df = pd.concat(list(stats_series.values()), axis=1)
             stats_df = stats_df.merge(chr_start_end, left_index=True, right_index=True)
+            stats_file = f"{kw.get('prefix','')}_stats.csv"
+            stats_df.to_csv(stats_file)
+            files_created.append(stats_file)
         except Exception as e:
-            LOGGER.error(f'Could not include chrom | chromStart | chromEnd in stats file: {e}')
-        stats_file = f"{kw.get('prefix','')}_stats.csv"
-        stats_df.to_csv(stats_file)
-        files_created.append(stats_file)
+            LOGGER.error(f'Could not include chrom | chromStart | chromEnd in stats file: {e} (some probes appear in multiple results rows)')
 
     # cruzdb is python2x only, and hasn't been maintained since 2014. So we wrote our own UCSC interface function: fetch_genes
     regions_stats_file = Path(f"{kw.get('prefix','')}_regions.csv")
@@ -309,7 +313,8 @@ def _pipeline(col_num0, step, dist, acf_dist, prefix, threshold, seed, table,
             sys_args = " ".join(sys.argv[1:])
             print(sys_args + "\n", file=fh) #### <<<--- only catch command line args
             import datetime
-            print("date: %s" % datetime.datetime.today(), file=fh)
+            timestamp = datetime.datetime.today()
+            print("date: %s" % timestamp, file=fh)
             from .__init__ import __version__
             print("version:", __version__, file=fh)
             if verbose: LOGGER.info(f"{sys_args} | {timestamp} | {__version__}")
@@ -339,13 +344,14 @@ def _pipeline(col_num0, step, dist, acf_dist, prefix, threshold, seed, table,
     if verbose: LOGGER.info(f"wrote: {fhslk.name} with lambda: {gc_lambda}")
 
     if genome_control:
-        fhslk = ts.nopen(prefix + ".slk.gc.bed.gz", "w")
+        # adjust p-values by the genomic inflance control factor, lambda
+        # see https://en.wikipedia.org/wiki/Genomic_control
+        # or https://onlinelibrary.wiley.com/doi/abs/10.1111/j.0006-341X.1999.00997.x for explanation
         adj = methylize.cpv.genome_control_adjust([d['p'] for d in methylize.cpv.bediter(prefix + ".slk.bed.gz", -1)])
-        for i, line in enumerate(ts.nopen(prefix + ".slk.bed.gz")):
-            print("%s\t%.5g" % (line.rstrip("\r\n"), adj[i]), file=fhslk)
-
-        fhslk.close()
-        if verbose: LOGGER.info(f"wrote: {fhslk.name}")
+        slk_df = pd.read_csv(prefix + ".slk.bed.gz", sep='\t')
+        slk_df['original_p'] = slk_df['p']
+        slk_df['p'] = adj
+        slk_df.to_csv(prefix + ".slk.bed.gz", sep='\t', index=False)
 
     with ts.nopen(prefix + ".fdr.bed.gz", "w") as fh:
         fh.write('#chrom\tstart\tend\tp\tregion-p\tregion-q\n')
@@ -412,12 +418,12 @@ def _pipeline(col_num0, step, dist, acf_dist, prefix, threshold, seed, table,
                 % (fh.name, region_filter_p, region_filter_n, N),
                 file=sys.stderr)
     """
-    if verbose:
-        regions = methylize.cpv.read_regions(fh.name)
-        methylize.cpv.manhattan(prefix + ".slk.bed.gz", 3,
-            prefix.rstrip(".") + ".manhattan.png",
-            False, ['#959899', '#484B4C'], "", False, None,
-            regions=regions, bonferonni=False)
+    #if verbose:
+    #    regions = methylize.cpv.read_regions(fh.name)
+    #    methylize.cpv.manhattan(prefix + ".slk.bed.gz", 3,
+    #        prefix.rstrip(".") + ".manhattan.png",
+    #        False, ['#959899', '#484B4C'], "", False, None,
+    #        regions=regions, bonferonni=False)
     return {"result": "OK"}
 
 

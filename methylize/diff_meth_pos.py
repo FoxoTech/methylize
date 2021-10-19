@@ -243,6 +243,16 @@ Returns:
         elif len(pheno_options) > 2:
             raise ValueError("Binary phenotype analysis requires 2 different phenotypes, but more than 2 are detected.")
 
+        # if array elements are strings, recode
+        #test_pheno = pd.Series(pheno_data)
+        #if test_pheno.apply(type).eq(str).all():
+        #    converter_counts = dict(test_pheno.value_counts())
+        #    if len(converter_counts) != 2:
+        #        raise ValueError(f"Phenotype must have exactly two values for linear regression. Found: {converter_counts}")
+        #    converter = {k:i for i,k in enumerate(converter_counts.keys())}
+        #    pheno_data = test_pheno.replace(converter)
+        #    LOGGER.info(f"Converted phenotype: {converter} (N: {converter_counts})")
+
         ##Check if binary phenotype data is already formatted as 0's and 1's that
             ##can be coerced to integers
         try:
@@ -352,9 +362,9 @@ Returns:
         global pheno_data_array
         # Check that phenotype data can be converted to a numeric array
         try:
-            pheno_data_array = np.array(pheno_data,dtype="float_")
+            pheno_data_array = np.array(pheno_data, dtype="float_")
         except:
-            raise ValueError("Phenotype data cannot be converted to a continuous numeric data type.")
+            raise ValueError("Phenotype data cannot be converted to a continuous numeric data type. Linear regression is only intended for continuous variables.")
 
         ##Fit least squares regression to each probe of methylation data
             ##Parallelize across all available cores using joblib
@@ -864,14 +874,19 @@ visualization kwargs
         prev_pvalue_cutoff_y = pvalue_cutoff_y
         adjusted = multipletests(stats_results.PValue, alpha=alpha)
         pvalue_cutoff_y = -np.log10(adjusted[3])
-        print(f"DEBUG: {prev_pvalue_cutoff_y} ==[ Bonferoni ]==> {pvalue_cutoff_y}")
+        # print(f"DEBUG: {prev_pvalue_cutoff_y} ==[ Bonferoni ]==> {pvalue_cutoff_y}")
     # draw the p-value cutoff line
     xy_line = {'x':list(range(len(stats_results))), 'y': [pvalue_cutoff_y for i in range(len(stats_results))]}
     df_line = pd.DataFrame(xy_line)
     ax.set_xticks(x_labels_pos)
     ax.set_xticklabels(x_labels)
     ax.set_xlim([0, len(df)])
+    # adjust max height to include the bonferoni line
     highest_value = max(df['minuslog10pvalue']) if pvalue_cutoff_y < max(df['minuslog10pvalue']) else pvalue_cutoff_y
+    # adjust max height to below the absolute ymax
+    highest_value = highest_value if highest_value < ymax else ymax
+    if pvalue_cutoff_y > ymax and verbose:
+        LOGGER.warning(f"Bonferoni adjusted significance line is above ymax, and won't appear.")
     ax.set_ylim([0, highest_value + 0.01 * highest_value])
     ax.set_xlabel('Chromosome')
     ax.set_ylabel('-log(p-value)')
