@@ -6,12 +6,12 @@ API Reference
 .. autosummary::
     :toctree: _autosummary
 
-    methylyize.diff_meth_pos
-    methylyize.diff_meth_regions
-    methylyize.fetch_genes
-    methylyize.volcano_plot
-    methylyize.manhattan_plot
-    methylyize.helpers.to_BED
+    methylize.diff_meth_pos
+    methylize.diff_meth_regions
+    methylize.fetch_genes
+    methylize.volcano_plot
+    methylize.manhattan_plot
+    methylize.helpers.to_BED
 
 
 differentially methylated positions
