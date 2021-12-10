@@ -39,5 +39,4 @@ Plots
 _____
 .. autofunction:: methylize.diff_meth_pos.manhattan_plot
     :members:
-    :undoc-members:
-    :show-inheritance:
+    
