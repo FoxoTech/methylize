@@ -9,8 +9,8 @@ API Reference
     methylize.diff_meth_pos
     methylize.diff_meth_regions
     methylize.fetch_genes
-    methylize.volcano_plot
     methylize.manhattan_plot
+    methylize.volcano_plot
     methylize.helpers.to_BED
 
 
@@ -19,8 +19,7 @@ differentially methylated positions
 
 .. automodule:: methylize.diff_meth_pos
     :members:
-    :undoc-members:
-    :show-inheritance:
+    
 
 differentially methylated regions
 ---------------------------------
@@ -35,8 +34,3 @@ differentially methylated regions
     :undoc-members:
     :show-inheritance:
 
-Plots
-_____
-.. autofunction:: methylize.diff_meth_pos.manhattan_plot
-    :members:
-    
