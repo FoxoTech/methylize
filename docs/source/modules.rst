@@ -1,7 +1,7 @@
 .. _modules:
 
 API Reference
--------------
+=============
 
 .. autosummary::
     :toctree: _autosummary
