@@ -8,7 +8,7 @@ Getting Started
 .. mdinclude:: README.md
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
    docs/demo_diff_meth_pos.ipynb
