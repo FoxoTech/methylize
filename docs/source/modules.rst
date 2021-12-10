@@ -3,6 +3,7 @@ API Reference
 
 .. autosummary::
     :toctree: _autosummary
+    
     methylyize.diff_meth_pos
     methylyize.diff_meth_regions
     methylyize.fetch_genes
