@@ -3,11 +3,25 @@
 [![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylize/badge/?version=latest)](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv) [![CircleCI](https://circleci.com/gh/FoxoTech/methylize/tree/master.svg?style=shield)](https://circleci.com/gh/FoxoTech/methylize/tree/master) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/099d26465bd64c2387afa063810a13e6)](https://www.codacy.com/gh/FoxoTech/methylize/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FOXOBioScience/methylize&amp;utm_campaign=Badge_Grade) [![Coverage Status](https://coveralls.io/repos/github/FoxoTech/methylize/badge.svg?branch=master)](https://coveralls.io/github/FoxoTech/methylize?branch=master) ![PYPI-Downloads](https://img.shields.io/pypi/dm/methylize.svg?label=pypi%20downloads&logo=PyPI&logoColor=white)
 
 - [Differentially methylated position (DMP) regression, detection and visualation](docs/demo_diff_meth_pos.ipynb)
-  - [Logistic Regression](docs/demo_diff_meth_pos.html#Testing-logistic-regression)
+  - [Logistic Regression](docs/methylize_tutorial#Differentially-methylated-Regions-(DMRs)-Analysis-with-Binary-Phenotypes-(Logistic-Regression))
   - [Linear Regression](docs/demo_diff_meth_pos.html#Testing-linear-regression)
   - [Volcano plot and mapping to chromosomes (manhattan plot)](docs/demo_diff_meth_pos.html#Testing-Manhattan-plot-visualizations)
 - [Differentially methylated regions](docs/diff_meth_regions.md)
   - [Gene annotation with the UCSC Human Genome Browser](docs/diff_meth_regions.html#gene-annotation-with-ucsc-genome-browser)
+
+##Installation
+
+```python
+pip3 install methylize
+```
+
+Installation will also install the other parts of the `methylsuite` (methylprep and methylcheck) if they are not already installed.
+
+If progress bar is missing:
+    If you don't see a progress bar in your jupyterlab notebook, try this:
+
+    - conda install -c conda-forge nodejs
+    - jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
 ##Methylize Package
 
@@ -25,21 +39,6 @@ The `methylize` package contains both high-level APIs for processing data from l
 
 Customizable: Plot size, color palette, and cutoff p-value lines can be set by the user.
 Exporting: You can export all probe statistics, or just the significant probes as CSV or python pickled DataFrame.
-
-##Installation
-
-```python
-pip3 install methylize
-```
-
-Installation will also install the other parts of the `methylsuite` (methylprep and methylcheck) if they are not already installed.
-
-If progress bar is missing:
-    If you don't see a progress bar in your jupyterlab notebook, try this:
-
-    - conda install -c conda-forge nodejs
-    - jupyter labextension install @jupyter-widgets/jupyterlab-manager
-
 
 ##Differentially methylated position/probe (DMP) detection
 
@@ -104,16 +103,16 @@ This creates two files, `beta_values.pkl` and `sample_sheet_meta_data.pkl`. You 
 
 Navigate to the folder where `methylrep` saved its processed files, and start a python interpreter:
 ```python
->>>import methylize
->>>data,meta = methylize.load_both()
+>>>import methylcheck
+>>>data, meta = methylcheck.load_both()
 INFO:methylize.helpers:loaded data (485512, 14) from 1 pickled files (0.159s)
 INFO:methylize.helpers:meta.Sample_IDs match data.index (OK)
 ```
 
 Or if you are running in a notebook, specify the path:
 ```python
-import methylize
-data,meta = methylize.load_both('<path_to...>/GSE105018')
+import methylcheck
+data, meta = methylcheck.load_both('<path_to...>/GSE105018')
 ```
 
 This also validates both files, and ensures that the `Sample_ID` column in meta DataFrame aligns with the column names in the `data DataFrame`.
