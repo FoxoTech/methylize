@@ -3,7 +3,7 @@
 [![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylize/badge/?version=latest)](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv) [![CircleCI](https://circleci.com/gh/FoxoTech/methylize/tree/master.svg?style=shield)](https://circleci.com/gh/FoxoTech/methylize/tree/master) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/099d26465bd64c2387afa063810a13e6)](https://www.codacy.com/gh/FoxoTech/methylize/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FOXOBioScience/methylize&amp;utm_campaign=Badge_Grade) [![Coverage Status](https://coveralls.io/repos/github/FoxoTech/methylize/badge.svg?branch=master)](https://coveralls.io/github/FoxoTech/methylize?branch=master) ![PYPI-Downloads](https://img.shields.io/pypi/dm/methylize.svg?label=pypi%20downloads&logo=PyPI&logoColor=white)
 
 - [Differentially methylated position (DMP) regression, detection and visualation](docs/demo_diff_meth_pos.ipynb)
-  - [Logistic Regression](docs/methylize_tutorial#Differentially-methylated-Regions-(DMRs)-Analysis-with-Binary-Phenotypes-(Logistic-Regression))
+  - [Logistic Regression](docs/methylize_tutorial#Differentially-methylated-Regions-(DMRs)-Analysis-with-Binary-Phenotypes)
   - [Linear Regression](docs/demo_diff_meth_pos.html#Testing-linear-regression)
   - [Volcano plot and mapping to chromosomes (manhattan plot)](docs/demo_diff_meth_pos.html#Testing-Manhattan-plot-visualizations)
 - [Differentially methylated regions](docs/diff_meth_regions.md)
