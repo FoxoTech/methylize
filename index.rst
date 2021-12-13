@@ -11,7 +11,7 @@ Getting Started
    :maxdepth: 3
    :caption: Contents:
 
-   docs/diff_meth_regions.mds
+   docs/diff_meth_regions.md
    docs/methylize_tutorial.ipynb
    docs/source/modules
    methylprep package <https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/>
