@@ -11,7 +11,6 @@ Getting Started
    :maxdepth: 3
    :caption: Contents:
 
-   docs/demo_diff_meth_pos.ipynb
    docs/diff_meth_regions.mds
    docs/methylize_tutorial.ipynb
    docs/source/modules
