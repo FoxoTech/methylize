@@ -12,8 +12,8 @@ Getting Started
    :caption: Contents:
 
    docs/demo_diff_meth_pos.ipynb
-   docs/diff_meth_regions.md
-   docs/methyize_tutorial.ipynb
+   docs/diff_meth_regions.mds
+   docs/methylize_tutorial.ipynb
    docs/source/modules
    methylprep package <https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/>
    methylcheck package <https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/>
