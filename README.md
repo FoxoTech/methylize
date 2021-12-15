@@ -5,7 +5,7 @@
 - [Differentially methylated position (DMP) regression, detection and visualation](docs/demo_diff_meth_pos.ipynb)
   - [Logistic Regression](docs/methylize_tutorial.html#Differentially-methylated-Regions-Analysis-with-Binary-Phenotypes)
   - [Linear Regression](docs/methylize_tutorial.html#Differentially-methylated-Regions-Analysis-with-Continuous-Numeric-Phenotypes)
-  - [Manhattan Plot](docs/methylize_tutorial.html#Manhattan-Plot-for-Binary-Phenotypes)
+  - [Manhattan Plot](docs/methylize_tutorial.html#Manhattan-Plots)
   - [Volcano plot](docs/methylize_tutorial.html#Volcano-Plot)
 - [Differentially methylated regions](docs/diff_meth_regions.md)
   - [Gene annotation with the UCSC Human Genome Browser](docs/diff_meth_regions.html#gene-annotation-with-ucsc-genome-browser)
