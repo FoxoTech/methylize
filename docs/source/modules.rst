@@ -29,12 +29,22 @@ differentially methylated regions
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: methylize.genome_browser
+.. automodule:: methylize.fetch_genes
     :members:
     :undoc-members:
     :show-inheritance:
 
-.. automodule:: methylize.fetch_genes
+.. automodule:: methylize.manhattan_plot
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: methylize.volcano_plot
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+.. automodule:: methylize.to_BED
     :members:
     :undoc-members:
     :show-inheritance:
