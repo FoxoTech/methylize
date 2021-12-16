@@ -34,3 +34,7 @@ differentially methylated regions
     :undoc-members:
     :show-inheritance:
 
+.. automodule:: methylize.fetch_genes
+    :members:
+    :undoc-members:
+    :show-inheritance:
