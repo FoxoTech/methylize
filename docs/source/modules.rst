@@ -29,20 +29,32 @@ differentially methylated regions
     :undoc-members:
     :show-inheritance:
 
+Fetch Genes
+-----------
+
 .. automodule:: methylize.fetch_genes
     :members:
     :undoc-members:
     :show-inheritance:
+
+Manhattan Plot
+--------------
 
 .. automodule:: methylize.manhattan_plot
     :members:
     :undoc-members:
     :show-inheritance:
 
+Volcano Plot
+------------
+
 .. automodule:: methylize.volcano_plot
     :members:
     :undoc-members:
     :show-inheritance:
+
+To BED
+------
 
 .. automodule:: methylize.to_BED
     :members:
