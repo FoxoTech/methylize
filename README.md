@@ -2,6 +2,50 @@
 
 [![Readthedocs](https://readthedocs.com/projects/life-epigenetics-methylize/badge/?version=latest)](https://life-epigenetics-methylize.readthedocs-hosted.com/en/latest/) [![image](https://img.shields.io/pypi/l/pipenv.svg)](https://python.org/pypi/pipenv) [![CircleCI](https://circleci.com/gh/FoxoTech/methylize/tree/master.svg?style=shield)](https://circleci.com/gh/FoxoTech/methylize/tree/master) [![Codacy Badge](https://app.codacy.com/project/badge/Grade/099d26465bd64c2387afa063810a13e6)](https://www.codacy.com/gh/FoxoTech/methylize/dashboard?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=FOXOBioScience/methylize&amp;utm_campaign=Badge_Grade) [![Coverage Status](https://coveralls.io/repos/github/FoxoTech/methylize/badge.svg?branch=master)](https://coveralls.io/github/FoxoTech/methylize?branch=master) ![PYPI-Downloads](https://img.shields.io/pypi/dm/methylize.svg?label=pypi%20downloads&logo=PyPI&logoColor=white)
 
+## methylize is part of the methylsuite
+
+`methylize` is part of the [methylsuite](https://pypi.org/project/methylsuite/) of python packages that provide functions to analyze DNA methylation data from Illumina's Infinium arrays (27k, 450k, and EPIC, as well as mouse arrays). This package is focused on analysis of processed methylation data, such as EWAS using Manhattan and Volcano plots.
+
+`methylize` functions are designed to work with a minimum of knowledge and specification required. But you can always override the "smart" defaults with custom settings if the default settings don't work for your data. The entire `methylsuite` is designed in this format: to offer ease of use while still maintaining flexibility for customization as needed.
+
+
+## Methylsuite package components
+
+You should install all three components, as they work together. The parts include:
+
+- `methylprep`: for processing `idat` files or downloading GEO datasets from NIH. Processing steps include
+   - infer type-I channel switch
+   - NOOB (normal-exponential convolution on out-of-band probe data)
+   - poobah (p-value with out-of-band array hybridization, for filtering low signal-to-noise probes)
+   - qualityMask (to exclude historically less reliable probes)
+   - nonlinear dye bias correction (AKA signal quantile normalization between red/green channels across a sample)
+   - calculate beta-value, m-value, or copy-number matrix
+   - large batch memory management, by splitting it up into smaller batches during processing
+
+- `methylcheck`: (this package) for quality control (QC) and analysis, including
+   - functions for filtering out unreliable probes, based on the published literature
+      - Note that `methylprep process` will exclude a set of unreliable probes by default. You can disable that using the --no_quality_mask option from CLI.
+   - sample outlier detection
+   - array level QC plots, based on Genome Studio functions
+   - a python clone of Illumina's Bead Array Controls Reporter software (QC)
+   - data visualization functions based on `seaborn` and `matplotlib` graphic libraries.
+   - predict sex of human samples from probes
+   - interactive method for assigning samples to groups, based on array data, in a Jupyter notebook
+
+- `methylize` provides more analysis and interpretation functions
+   - differentially methylated probe statistics (between treatment and control samples)
+   - volcano plots (which probes are the most different?)
+   - manhattan plots (where in genome are the differences?)
+
+- [Differentially methylated position (DMP) regression, detection and visualation](docs/demo_diff_meth_pos.ipynb)
+  - [Logistic Regression](docs/methylize_tutorial.html#Differentially-Methylated-Regions-Analysis-with-Binary-Phenotypes)
+  - [Linear Regression](docs/methylize_tutorial.html#Differentially-Methylated-Regions-Analysis-with-Continuous-Numeric-Phenotypes)
+  - [Manhattan Plot](docs/methylize_tutorial.html#Manhattan-Plots)
+  - [Volcano plot](docs/methylize_tutorial.html#Volcano-Plot)
+- [Differentially methylated regions](docs/diff_meth_regions.md)
+  - [Gene annotation with the UCSC Human Geno
+
+## Table of Contents
 - [Differentially methylated position (DMP) regression, detection and visualation](docs/demo_diff_meth_pos.ipynb)
   - [Logistic Regression](docs/methylize_tutorial.html#Differentially-Methylated-Regions-Analysis-with-Binary-Phenotypes)
   - [Linear Regression](docs/methylize_tutorial.html#Differentially-Methylated-Regions-Analysis-with-Continuous-Numeric-Phenotypes)
