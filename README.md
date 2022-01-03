@@ -37,14 +37,6 @@ You should install all three components, as they work together. The parts includ
    - volcano plots (which probes are the most different?)
    - manhattan plots (where in genome are the differences?)
 
-- [Differentially methylated position (DMP) regression, detection and visualation](docs/demo_diff_meth_pos.ipynb)
-  - [Logistic Regression](docs/methylize_tutorial.html#Differentially-Methylated-Regions-Analysis-with-Binary-Phenotypes)
-  - [Linear Regression](docs/methylize_tutorial.html#Differentially-Methylated-Regions-Analysis-with-Continuous-Numeric-Phenotypes)
-  - [Manhattan Plot](docs/methylize_tutorial.html#Manhattan-Plots)
-  - [Volcano plot](docs/methylize_tutorial.html#Volcano-Plot)
-- [Differentially methylated regions](docs/diff_meth_regions.md)
-  - [Gene annotation with the UCSC Human Geno
-
 ## Table of Contents
 - [Differentially methylated position (DMP) regression, detection and visualation](docs/demo_diff_meth_pos.ipynb)
   - [Logistic Regression](docs/methylize_tutorial.html#Differentially-Methylated-Regions-Analysis-with-Binary-Phenotypes)
