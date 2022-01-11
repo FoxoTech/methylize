@@ -40,24 +40,24 @@ Summary:
 
 fetch_genes() is an EXPLORATORY tool and makes a number of simplicifications:
 
-  - the DMR regions file saves one CpG probe name and location, even though clusters of probes may map to
-  that nearby area.
-  - it measures the distance from the start position of the one representative probe per region to any nearby
-  genes, using the `tol`erance parameter as the cutoff. Tolerance is the max number of base pairs of separation
-  between the probe sequence start and the gene sequence start for it to be considered as a match.
-  - The default `tol`erance is 250, but that is arbitrary. Increase it to expand the search area, or decrease it
-  to be more conservative. Remember that Illumina CpG probe sequences are 50 base pairs long, so 100 is nearly
-  overlapping. 300 or 500 would also be reasonable.
-  - "Adjacent" in the linear sequence may not necessarily mean that the CpG island is FUNCTIONALLY coupled to the
-  regulatory or coding region of the nearby protein. DNA superstructure can position regulatory elements near to
-  a coding region that are far upstream or downstream from the mapped position, and there is no easy way to identify
-  "adjacent" in this sense.
-  - Changing the `tol`erance, or the reference database will result major differences in the output, and thus
-  one's interpretation of the same data.
-  - Before interpreting these "associations" you should also consider filtering candidate genes by
-  specific cell types where they are expressed. You should know the tissue from which your samples originated.
-  And filter candidate genes to exclude those that are only expressed in your tissue during development,
-  if your samples are from adults, and vice versa.
+  * the DMR regions file saves one CpG probe name and location, even though clusters of probes may map to
+    that nearby area.
+  * it measures the distance from the start position of the one representative probe per region to any nearby
+    genes, using the `tol`erance parameter as the cutoff. Tolerance is the max number of base pairs of separation
+    between the probe sequence start and the gene sequence start for it to be considered as a match.
+  * The default `tol`erance is 250, but that is arbitrary. Increase it to expand the search area, or decrease it
+    to be more conservative. Remember that Illumina CpG probe sequences are 50 base pairs long, so 100 is nearly
+    overlapping. 300 or 500 would also be reasonable.
+  * "Adjacent" in the linear sequence may not necessarily mean that the CpG island is FUNCTIONALLY coupled to the
+    regulatory or coding region of the nearby protein. DNA superstructure can position regulatory elements near to
+    a coding region that are far upstream or downstream from the mapped position, and there is no easy way to identify
+    "adjacent" in this sense.
+  * Changing the `tol`erance, or the reference database will result major differences in the output, and thus
+    one's interpretation of the same data.
+  * Before interpreting these "associations" you should also consider filtering candidate genes by
+    specific cell types where they are expressed. You should know the tissue from which your samples originated.
+    And filter candidate genes to exclude those that are only expressed in your tissue during development,
+    if your samples are from adults, and vice versa.
 
 Arguments:
 

@@ -105,3 +105,8 @@ venv.bak/
 .DS_Store
 docs/example_data/epic_plus/
 docs/example_data/450k_test/
+
+data/asthma
+data/asthma/*
+docs/.ipynb_checkpoints
+docs/.ipynb_checkpoints/*

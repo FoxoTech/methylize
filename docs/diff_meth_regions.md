@@ -12,7 +12,7 @@ Genomic regions where DNA methylation levels differ between two groups of sample
 - allele-specific DMR (AMR),
 - aging-specific DMR (aDMR).
 
-###How do run DMR
+###How to run DMR
 
 First, assuming you have processed data using `methylprep`, use `methylize` to convert a dataframe of beta or M-values into differentially-methylated-probe (DMP) statistics, using `methylize.diff_meth_pos`. You will need to provide the data along with a list of sample labels for how to separate the data into two (treatment / control) groups or more groups (levels of a phenotypic characteristic, such as age or BMI):
 

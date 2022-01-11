@@ -132,8 +132,9 @@ Returns:
 
 def to_BED(stats, manifest_or_array_type, save=True, filename='', genome_build=None, columns=None):
     """Converts & exports manifest and probe p-value dataframe to BED format.
-    - https://en.wikipedia.org/wiki/BED_(file_format)
-    - BED format: [ chromosome number | start position | end position | p-values]
+    * https://en.wikipedia.org/wiki/BED_(file_format)
+    
+    * BED format: [ chromosome number | start position | end position | p-values]
     Where p-values are the output from diff_meth_pos() comparing probes across two or more
     groups of samples for genomic differences in methylation.
 
