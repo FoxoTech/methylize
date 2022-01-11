@@ -62,7 +62,7 @@ fetch_genes() is an EXPLORATORY tool and makes a number of simplicifications:
 Arguments:
 
     dmr_regions_file:
-        pass in the output file from DMR function.
+        pass in the output file DataFrame or FILEPATH from DMR function.
         Omit if you specify the `sql` kwarg instead.
     ref: default is `refGene`
         use one of possible_tables for lookup:
@@ -99,9 +99,15 @@ Arguments:
     """
     if verbose:
         logging.basicConfig(level=logging.INFO)
-    if not sql and not dmr_regions_file:
+    if isinstance(dmr_regions_file, pd.DataFrame):
+        regions = dmr_regions_file
+        reqd_regions = set(['name', 'chromStart'])
+        if set(regions.columns) & reqd_regions != reqd_regions:
+            raise KeyError(f"Your file of CpG regions must have these columns, at a minimum: {reqd_regions}")
+        LOGGER.info(f"Loaded {regions.shape[0]} CpG regions.")
+    elif not sql and dmr_regions_file is None:
         raise Exception("Either provide a path to the DMR stats file or a sql query.")
-    if not sql:
+    elif not sql:
         regions = pd.read_csv(dmr_regions_file) #.sort_values('z_p')
         reqd_regions = set(['name', 'chromStart'])
         if set(regions.columns) & reqd_regions != reqd_regions:
