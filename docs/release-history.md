@@ -1,6 +1,7 @@
 # Release History
 
 ## v1.0.0
+  - fixed bug in fetch_genes() from UCSC browser; function will now accept either the filepath or the DMR dataframe output.
 
 ## v0.9.9
 - Added a differentially methylated regions (DMR) functions that takes the output of the `diff_meth_pos` (DMP) function.
