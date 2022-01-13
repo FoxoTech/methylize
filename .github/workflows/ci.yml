@@ -1,0 +1,48 @@
+name: Run pytest
+on:
+  push:
+    branches:
+      - master
+      - 'feature/**'
+  pull_request:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Python 3
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+            pip install pipenv
+            pipenv install --dev --skip-lock
+            pipenv install -e . --skip-lock
+            # pipenv uses requirements.txt
+
+      - name: Running tests and test coverage
+        run: |
+            pipenv install coveralls --skip-lock # for coveralls.io -- this can be in Pipfile [dev] instead.
+            pipenv run coverage run setup.py test
+            pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
+            pipenv run coverage report
+            pipenv run coverage html
+            pipenv run coveralls
+            # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
+
+      - name: Publish Unit Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v1.26
+        if: always()
+        with:
+          files: htmlcov/**/*.xml
+
+# Diffs are limited to 300 files. If there are files changed that aren't matched in the first 300 files returned by the
+# filter, the workflow will not run. You may need to create more specific filters so that the workflow will run automatically.
+#       - name: Install dependencies
+#        run: |
+#          python -m pip install --upgrade pip
+#          pip install -r requirements.txt
