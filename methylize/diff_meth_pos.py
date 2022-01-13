@@ -329,7 +329,7 @@ Returns:
         ##Format binary data as 0's and 1's if it was given as a list of strings with
             ##2 different string values
         if zeroes_ones:
-            pheno_data_binary = np.array(pheno_data,dtype=np.int)
+            pheno_data_binary = np.array(pheno_data,dtype=int)
         else:
             pheno_data_binary = np.array(pheno_data)
             ##Turn the first phenotype into zeroes wherever it occurs in the array
