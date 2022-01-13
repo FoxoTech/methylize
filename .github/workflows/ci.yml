@@ -24,10 +24,6 @@ jobs:
             pipenv install -e . --skip-lock
             # pipenv uses requirements.txt
 
-  test:
-    needs: build
-    runs-on: ubuntu-latest
-    steps:
       - name: Running tests and test coverage
         run: |
             pipenv install coveralls --skip-lock # for coveralls.io -- this can be in Pipfile [dev] instead.
@@ -36,25 +32,21 @@ jobs:
             pipenv run coverage report
             pipenv run coverage html
             pipenv run coveralls
-            # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci    
+            # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1.26
         if: always()
         with:
           files: htmlcov/**/*.xml
 
-  coveralls_finish:
-    needs: test
-    runs-on: ubuntu-latest
-    steps:
-    - name: Coveralls Finished
-      env:
-        COVERALLS_SERVICE_NAME: 'GitHub CI'
-        COVERALLS_REPO_TOKEN : ${{ secrets.COVERALLS_REPO_TOKEN }}
-      uses: AndreMiras/coveralls-python-action@master
-      with:
-        github-token: ${{ secrets.GITHUB_TOKEN }}
-        parallel-finished: true
+      - name: Coveralls Finished
+        env:
+          COVERALLS_SERVICE_NAME: 'GitHub CI'
+          COVERALLS_REPO_TOKEN : ${{ secrets.COVERALLS_REPO_TOKEN }}
+        uses: AndreMiras/coveralls-python-action@master
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true
 
 # Diffs are limited to 300 files. If there are files changed that aren't matched in the first 300 files returned by the
 # filter, the workflow will not run. You may need to create more specific filters so that the workflow will run automatically.
