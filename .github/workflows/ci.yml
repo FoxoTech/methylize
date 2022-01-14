@@ -10,6 +10,8 @@ on:
 
 env:
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+  COVERALLS_SERVICE_NAME: 'GitHub CI'
+  COVERALLS_REPO_TOKEN : ${{ secrets.COVERALLS_REPO_TOKEN }}
 
 jobs:
   build:
@@ -34,14 +36,30 @@ jobs:
             pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
             pipenv run coverage report
             pipenv run coverage html
-            pipenv run coveralls
+            pipenv run coveralls --service=github
             # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
+
+  parallel-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Install Python 3
+        uses: actions/setup-python@v1
+        with:
+          python-version: 3.8
+      - name: Install dependencies
+        run: |
+            pip install pipenv
+            pipenv install --dev --skip-lock
+            pipenv install -e . --skip-lock
+            pipenv install coveralls --skip-lock
+            # pipenv uses requirements.txt
 
       - name: coveralls_first_attempt
         env:
           COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
         run: |
-          pipenv env pytest -s -v --cov={project} --cov-report term-missing && coveralls
+          pipenv run pytest tests -s -v --cov={project} --cov-report term-missing && coveralls
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1.26
