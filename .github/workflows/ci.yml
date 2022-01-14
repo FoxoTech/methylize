@@ -43,9 +43,6 @@ jobs:
           files: test-results/**/*.xml
 
       - name: Coveralls Finished
-        env:
-          COVERALLS_SERVICE_NAME: 'GitHub CI'
-          COVERALLS_REPO_TOKEN : ${{ secrets.COVERALLS_REPO_TOKEN }}
         uses: AndreMiras/coveralls-python-action@master
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
