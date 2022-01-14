@@ -45,7 +45,7 @@ jobs:
         run: |
             # pipenv install coveralls --skip-lock # for coveralls.io -- this IS in Pipfile [dev] instead.
             # --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
-            pipenv run coverage run test -v            
+            pipenv run coverage run setup.py test -v            
             pipenv run coverage report
             pipenv run coverage html
             pipenv run coveralls
