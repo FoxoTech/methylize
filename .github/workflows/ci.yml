@@ -38,10 +38,10 @@ jobs:
             # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
 
       - name: coveralls_first_attempt
-          env:
-            COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
-          run: |
-            pipenv env pytest -s -v --cov={project} --cov-report term-missing && coveralls
+        env:
+          COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+        run: |
+          pipenv env pytest -s -v --cov={project} --cov-report term-missing && coveralls
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1.26
