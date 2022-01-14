@@ -10,7 +10,7 @@ on:
 
 env:
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
-  
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -30,12 +30,19 @@ jobs:
       - name: Running tests and test coverage
         run: |
             pipenv install coveralls --skip-lock # for coveralls.io -- this can be in Pipfile [dev] instead.
-            pipenv run coverage run setup.py test
-            pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
+            # pipenv run coverage run setup.py test
+            # pipenv run pytest tests --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
             pipenv run coverage report
             pipenv run coverage html
             pipenv run coveralls
             # set COVERALLS_REPO_TOKEN=<...> in ENVIRONMENT variables in circleci
+
+      - name: coveralls_first_attempt
+          env:
+            COVERALLS_REPO_TOKEN: ${{ secrets.COVERALLS_REPO_TOKEN }}
+          run: |
+            pipenv env pytest -s -v --cov={project} --cov-report term-missing && coveralls
+
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1.26
         if: always()
