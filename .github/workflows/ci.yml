@@ -35,7 +35,7 @@ jobs:
           key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
 
       - name: Install dependencies
-        if: steps.cache-pipenv.outputs.cache-hit != 'true'
+      - if: "steps.cache-pipenv.outputs.cache-hit != 'true'"
         run: |
           pipenv install --dev --skip-lock
           pipenv install -e . --skip-lock
