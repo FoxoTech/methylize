@@ -47,7 +47,7 @@ jobs:
         uses: EnricoMi/publish-unit-test-result-action@v1.26
         if: always()
         with:
-          files: htmlcov/**/*.xml
+          files: test-results/**/*.xml
 
       - name: Coveralls Finished
         env:
