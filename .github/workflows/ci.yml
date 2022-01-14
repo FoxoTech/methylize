@@ -14,48 +14,12 @@ env:
   COVERALLS_REPO_TOKEN : ${{ secrets.COVERALLS_REPO_TOKEN }}
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository code
-        uses: actions/checkout@v2
-
-      - name: Install Python 3
-        uses: actions/setup-python@v2 # faster than python container
-        with:
-          python-version: 3.8
-
-      - name: Setup & Cache Python
-        run: |
-            python -m pip install --upgrade pipenv wheel
-      - id: cache-pipenv
-        uses: actions/cache@v1
-        with:
-          path: ~/.local/share/virtualenvs
-          key: ${{ runner.os }}-pipenv-${{ hashFiles('**/Pipfile.lock') }}
-
-      - name: Install dependencies
-        if: steps.cache-pipenv.outputs.cache-hit != 'true'
-        run: |
-          pipenv install --dev --skip-lock
-          pipenv install -e . --skip-lock
-          # pipenv uses requirements.txt
-
-      - name: Running tests and test coverage
-        run: |
-            # pipenv install coveralls --skip-lock # for coveralls.io -- this IS in Pipfile [dev] instead.
-            # --junit-xml=htmlcov/junit.xml # rerun tests to collect test-results
-            pipenv run coverage run setup.py test -v            
-            pipenv run coverage report
-            pipenv run coverage html
-            pipenv run coveralls
-
   parallel-test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - name: Install Python 3
-        uses: actions/setup-python@v1
+        uses: actions/setup-python@v2
         with:
           python-version: 3.8
       - name: Install dependencies
@@ -69,7 +33,7 @@ jobs:
 
       - name: coveralls_first_attempt
         run: |
-          pipenv run pytest tests -s -v --cov=test-results --cov-report term && coveralls
+          pipenv run pytest tests --cov-report= --cov=methylize tests/
           # term-missing && coveralls /tests
 
       - name: Publish Unit Test Results
