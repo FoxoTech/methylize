@@ -12,13 +12,25 @@ env:
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
   COVERALLS_SERVICE_NAME: 'github'
   COVERALLS_REPO_TOKEN : ${{ secrets.COVERALLS_REPO_TOKEN }}
-env: GITHUB_CONTEXT: ${{ toJSON(github) }}
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo "$GITHUB_CONTEXT"
+      - name: Dump GitHub context
+        id: github_context_step
+        run: echo '${{ toJSON(github) }}'
+      - name: Dump job context
+        run: echo '${{ toJSON(job) }}'
+      - name: Dump steps context
+        run: echo '${{ toJSON(steps) }}'
+      - name: Dump runner context
+        run: echo '${{ toJSON(runner) }}'
+      - name: Dump strategy context
+        run: echo '${{ toJSON(strategy) }}'
+      - name: Dump matrix context
+        run: echo '${{ toJSON(matrix) }}'
+        
       - uses: actions/checkout@v2
       - name: Install Python 3
         uses: actions/setup-python@v2
