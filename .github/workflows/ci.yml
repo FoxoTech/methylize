@@ -12,11 +12,13 @@ env:
   GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
   COVERALLS_SERVICE_NAME: 'github'
   COVERALLS_REPO_TOKEN : ${{ secrets.COVERALLS_REPO_TOKEN }}
+env: GITHUB_CONTEXT: ${{ toJSON(github) }}
 
 jobs:
-  parallel-test:
+  test:
     runs-on: ubuntu-latest
     steps:
+      - run: echo "$GITHUB_CONTEXT"
       - uses: actions/checkout@v2
       - name: Install Python 3
         uses: actions/setup-python@v2
