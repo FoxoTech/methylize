@@ -55,6 +55,7 @@ jobs:
         with:
           # The `GITHUB_TOKEN` or `COVERALLS_REPO_TOKEN`.
           # Default: ${{ github.token }}
+          #github-token: ${{ secrets.GITHUB_TOKEN }}
           github-token: ${{ github.token }}
           # Set to `true` if you are using parallel jobs, then use `parallel-finished: true` for the last action.
           # Default: false
@@ -71,7 +72,7 @@ jobs:
           # Set to true to increase logger verbosity.
           # Default: false
           debug: 'true'
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+
 
 # Diffs are limited to 300 files. If there are files changed that aren't matched in the first 300 files returned by the
 # filter, the workflow will not run. You may need to create more specific filters so that the workflow will run automatically.
