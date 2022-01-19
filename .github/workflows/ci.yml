@@ -36,25 +36,16 @@ jobs:
             pipenv install pytest_cov
             pipenv install --dev --skip-lock
             pipenv install -e . --skip-lock
-            pipenv install coveralls --skip-lock
+            # pipenv install coveralls --skip-lock
             # pipenv uses requirements.txt
 
       - name: testing and coverage report
         run: |
           pipenv run pytest tests --cov-report term --cov-report xml --cov=methylize tests/
-          # term-missing && coveralls /tests
+          pipenv run coverage run
+          pipenv run coverage xml
 
-      - name: List Files
-        uses: Rishabh510/Path-lister-action@1.0
-        with:
-          path: "./"
-          type: ".xml"
-
-      #- name: Publish Unit Test Results
-      #uses: EnricoMi/publish-unit-test-result-action@v1.26
-      #if: always()
-      #with:
-      #files: coverage.xml
+      - name: send to codecov.io
       - uses: codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
@@ -64,7 +55,7 @@ jobs:
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
 
-      - name: Coveralls Finished
+      - name: send to coveralls.io
         uses: AndreMiras/coveralls-python-action@master
         with:
           # The `GITHUB_TOKEN` or `COVERALLS_REPO_TOKEN`.
