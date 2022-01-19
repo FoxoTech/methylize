@@ -41,6 +41,7 @@ jobs:
 
       - name: PyTest
         run: |
+          pip install -r requirements.txt
           python -m pytest --capture=tee-sys --continue-on-collection-errors --junit-xml test-results/pytest.xml
       - name: Upload Test Results
         if: always()
