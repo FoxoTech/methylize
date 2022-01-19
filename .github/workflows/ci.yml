@@ -50,11 +50,19 @@ jobs:
           path: "./"
           type: ".xml"
 
-      - name: Publish Unit Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v1.26
-        if: always()
+      #- name: Publish Unit Test Results
+      #uses: EnricoMi/publish-unit-test-result-action@v1.26
+      #if: always()
+      #with:
+      #files: coverage.xml
+      - uses: codecov/codecov-action@v2
         with:
-          files: coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
+          files: ./coverage.xml #./coverage1.xml,./coverage2.xml # optional
+          flags: unittests # optional
+          name: codecov-umbrella # optional
+          fail_ci_if_error: true # optional (default = false)
+          verbose: true # optional (default = false)
 
       - name: Coveralls Finished
         uses: AndreMiras/coveralls-python-action@master
