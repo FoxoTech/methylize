@@ -44,7 +44,7 @@ jobs:
       - name: testing and coverage report
         run: |
           # pipenv run pytest tests --cov-report term --cov-report xml --cov=methylize tests/
-          pipenv run coverage run pytest tests --cov-report term --cov-report xml --cov=methylize tests/
+          pipenv run coverage run setup.py test tests --cov-report term --cov-report xml --cov=methylize tests/
           pipenv run coverage xml
 
       - name: send to codecov.io
