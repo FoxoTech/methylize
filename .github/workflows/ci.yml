@@ -38,6 +38,20 @@ jobs:
             pipenv install -e . --skip-lock
             # pipenv uses requirements.txt
 
+
+      - name: PyTest
+        run: |
+          python -m pytest --capture=tee-sys --continue-on-collection-errors --junit-xml test-results/pytest.xml
+      - name: Upload Test Results
+        if: always()
+        uses: actions/upload-artifact@v2
+        with:
+          name: Unit Test Results (${{github.run_number}})
+          path: |
+            test-results/*.xml
+            unit-test-results.json
+
+
       - name: Testing and coverage report
         run: |
           pipenv run coverage run setup.py test
@@ -57,6 +71,8 @@ jobs:
       - name: Publish Test Results to Github
         uses: EnricoMi/publish-unit-test-result-action@v1
         if: always()
+
+
 
 # GHA workflow: diffs are limited to 300 files. If there are files changed that aren't matched in the first 300 files returned by the
 # filter, the workflow will not run. You may need to create more specific filters so that the workflow will run automatically.

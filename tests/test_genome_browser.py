@@ -49,7 +49,7 @@ class TestGenome():
         results = methylize.fetch_genes(self.source, ref='refGene', tol=10, tissue='all')
         matched = results[ results.descriptions != '' ]
         if matched.shape != self.expected_match_tol_10:
-            raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_100}. Perhaps the genome data updated?")
+            raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_10}. Perhaps the genome data updated?")
 
     def test_fetch_genes_errors(self):
         """ does not test downloading the data from UCSC"""
