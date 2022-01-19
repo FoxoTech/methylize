@@ -22,10 +22,12 @@ jobs:
         run: echo '${{ toJSON(github) }}'
       - name: Dump runner context
         run: echo '${{ toJSON(runner) }}'
-      - name: Dump strategy context
-        run: echo '${{ toJSON(strategy) }}'
+      #- name: Dump strategy context
+      #  run: echo '${{ toJSON(strategy) }}'
 
-      - uses: actions/checkout@v2
+      - name: checkout repo
+        uses: actions/checkout@v2
+
       - name: Install Python 3
         uses: actions/setup-python@v2
         with:
@@ -46,7 +48,7 @@ jobs:
           pipenv run coverage xml
 
       - name: send to codecov.io
-      - uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
           files: ./coverage.xml #./coverage1.xml,./coverage2.xml # optional
