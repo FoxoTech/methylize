@@ -39,19 +39,22 @@ jobs:
             pipenv install coveralls --skip-lock
             # pipenv uses requirements.txt
 
-      - name: coveralls_first_attempt
+      - name: testing and coverage report
         run: |
           pipenv run pytest tests --cov-report term --cov-report xml --cov=methylize tests/
           # term-missing && coveralls /tests
 
-      - name: List all files
-        run: echo '$(ls -R)'
+      - name: List Files
+        uses: Rishabh510/Path-lister-action@1.0
+        with:
+          path: "./"
+          type: ".xml"
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1.26
         if: always()
         with:
-          files: ./**/*.xml
+          files: coverage.xml
 
       - name: Coveralls Finished
         uses: AndreMiras/coveralls-python-action@master
