@@ -41,8 +41,11 @@ jobs:
 
       - name: coveralls_first_attempt
         run: |
-          pipenv run pytest tests --cov-report= --cov=methylize tests/
+          pipenv run pytest tests --cov-report term --cov-report xml --cov=methylize tests/
           # term-missing && coveralls /tests
+
+      - name: List all files
+        run: echo 'ls -R'
 
       - name: Publish Unit Test Results
         uses: EnricoMi/publish-unit-test-result-action@v1.26
