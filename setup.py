@@ -2,6 +2,20 @@
 from setuptools import setup, find_packages
 exec(open('methylize/version.py').read())
 
+requirements = [
+    'pandas',
+    'numpy',
+    'scipy',
+    'statsmodels',
+    'matplotlib',
+    'methylprep',
+    'methylcheck',
+    'pymysql',
+    'toolshed',
+    'interlap',
+    #'cpv', #'cpv @ git+https://github.com/brentp/combined-pvalues.git@v0.50.6#egg=cpv',
+]
+
 setup(
     name='methylize',
     version=__version__,
@@ -35,21 +49,18 @@ setup(
     author_email='info@FOXOBioScience.com',
     packages=find_packages(),
     include_package_data=True,
-    install_requires=[
-        'pandas',
-        'numpy',
-        'scipy',
-        'statsmodels',
-        'matplotlib',
-        'methylprep',
-        'methylcheck',
-        #'cpv', #'cpv @ git+https://github.com/brentp/combined-pvalues.git@v0.50.6#egg=cpv',
-        'pymysql',
-        'toolshed',
-        'interlap',
-    ],
+    install_requires=requirements,
+    extras_require={
+        'dev': [
+            'pytest',
+            'coverage'
+        ]
+    }
     setup_requires=['pytest-runner'],
-    tests_require=['pytest'],
+    tests_require=[
+        'pytest',
+        'coverage'
+        ],
     entry_points={
         'console_scripts': [
             'methylize = methylize:main',

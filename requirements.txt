@@ -6,8 +6,6 @@ scipy #>=1.2.3
 matplotlib
 statsmodels
 joblib
-pytest
-coverage
 sphinx>=1.4
 sphinxcontrib-apidoc
 m2r

@@ -33,10 +33,9 @@ jobs:
       - name: Install dependencies
         run: |
             pip install pipenv pytest_cov
-            pipenv install pytest_cov
+            # pipenv install pytest_cov
             pipenv install --dev --skip-lock
             pipenv install -e . --skip-lock
-            # pipenv install coveralls --skip-lock
             # pipenv uses requirements.txt
 
       - name: Testing and coverage report
@@ -56,7 +55,7 @@ jobs:
           verbose: true # optional (default = false)
 
       - name: Publish Test Results to Github
-        uses: EnricoMi/publish-unit-test-result-action/composite@v1
+        uses: EnricoMi/publish-unit-test-result-action@v1
         if: always()
 
 # GHA workflow: diffs are limited to 300 files. If there are files changed that aren't matched in the first 300 files returned by the
