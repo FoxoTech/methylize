@@ -20,14 +20,12 @@ jobs:
       - name: Dump GitHub context
         id: github_context_step
         run: echo '${{ toJSON(github) }}'
-      - name: Dump runner context
-        run: echo '${{ toJSON(runner) }}'
+      #- name: Dump runner context
+      #  run: echo '${{ toJSON(runner) }}'
       #- name: Dump strategy context
       #  run: echo '${{ toJSON(strategy) }}'
-
-      - name: checkout repo
+      - name: Checkout repo
         uses: actions/checkout@v2
-
       - name: Install Python 3
         uses: actions/setup-python@v2
         with:
@@ -41,13 +39,12 @@ jobs:
             # pipenv install coveralls --skip-lock
             # pipenv uses requirements.txt
 
-      - name: testing and coverage report
+      - name: Testing and coverage report
         run: |
-          # pipenv run pytest tests --cov-report term --cov-report xml --cov=methylize tests/
           pipenv run coverage run setup.py test
           pipenv run coverage xml
 
-      - name: send to codecov.io
+      - name: Send to codecov.io
         uses: codecov/codecov-action@v2
         with:
           token: ${{ secrets.CODECOV_TOKEN }} # not required for public repos
@@ -58,44 +55,6 @@ jobs:
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
 
-      - name: send to coveralls.io
-        uses: AndreMiras/coveralls-python-action@master
-        with:
-          # The `GITHUB_TOKEN` or `COVERALLS_REPO_TOKEN`.
-          # Default: ${{ github.token }}
-          #github-token: ${{ secrets.GITHUB_TOKEN }}
-          github-token: ${{ github.token }}
-          # Set to `true` if you are using parallel jobs, then use `parallel-finished: true` for the last action.
-          # Default: false
-          parallel: 'false'
-          # Set to `true` for the last action when using `parallel: true`.
-          # Default: false
-          parallel-finished: false
-          # A name to identify the current job. This is useful in combination with `parallel: true`.
-          # Default: null
-          flag-name: null
-          # A sub-directory in which coverage was executed.
-          # Default: '.'
-          base-path: '.'
-          # Set to true to increase logger verbosity.
-          # Default: false
-          debug: 'true'
 
-
-# Diffs are limited to 300 files. If there are files changed that aren't matched in the first 300 files returned by the
+# GHA workflow: diffs are limited to 300 files. If there are files changed that aren't matched in the first 300 files returned by the
 # filter, the workflow will not run. You may need to create more specific filters so that the workflow will run automatically.
-#       - name: Install dependencies
-#        run: |
-#          python -m pip install --upgrade pip
-#          pip install -r requirements.txt
-# - generated xml file: /home/runner/work/methylize/methylize/htmlcov/junit.xml --
-#    - name: Coveralls
-#      # add secrets here: https://github.com/organizations/FoxoTech/settings/secrets/actions
-#      env:
-#        COVERALLS_SERVICE_NAME: 'GitHub CI'
-#        COVERALLS_REPO_TOKEN : ${{ secrets.COVERALLS_REPO_TOKEN }}
-#      uses: AndreMiras/coveralls-python-action@develop
-#      with:
-#        github-token: ${{ secrets.GITHUB_TOKEN }}
-#        parallel: true
-#        flag-name: Unit Test
