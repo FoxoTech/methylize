@@ -55,6 +55,9 @@ jobs:
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
 
+      - name: Publish Test Results to Github
+        uses: EnricoMi/publish-unit-test-result-action/composite@v1
+        if: always()
 
 # GHA workflow: diffs are limited to 300 files. If there are files changed that aren't matched in the first 300 files returned by the
 # filter, the workflow will not run. You may need to create more specific filters so that the workflow will run automatically.
