@@ -69,9 +69,16 @@ jobs:
           fail_ci_if_error: true # optional (default = false)
           verbose: true # optional (default = false)
 
-      - name: Publish Test Results to Github
-        uses: EnricoMi/publish-unit-test-result-action@v1
-        if: always()
+      - name: cobertura-report # publishes coverage.xml
+        uses: 5monkeys/cobertura-action@v12
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          minimum_coverage: 50
+          fail_below_threshold: 50
+
+    #- name: Publish Test Results to Github
+    #    uses: EnricoMi/publish-unit-test-result-action@v1
+    #    if: always()
 
 
 
