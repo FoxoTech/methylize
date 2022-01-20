@@ -22,7 +22,7 @@ class TestGenome():
     expected_match_tol_10 = (56, 12) # tissue='blood'
     expected_match_tol_250_ncbi = (1626, 11)
     expected_match_tol_100_ncbi = (760, 11)
-    expected_match_tol_250_known = (2637, 11) # (2605, 11)
+    expected_match_tol_250_known = (2605, 11) # (2637, 11) -- when using latest copy; (2605, 11) --- using cached
     expected_match_tol_100_known = (1350, 11)
 
     def test_fetch_genes_sql(self):
