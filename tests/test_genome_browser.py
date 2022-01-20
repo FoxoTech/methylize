@@ -39,14 +39,14 @@ class TestGenome():
             raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_250_ncbi}. Perhaps the genome data updated?")
 
     def test_fetch_genes_knownGene(self):
-        results = methylize.fetch_genes(self.source, ref='knownGene', tol=250, use_cached=False,  no_sync=True)
+        results = methylize.fetch_genes(self.source, ref='knownGene', tol=250, use_cached=True, no_sync=True)
         matched = results[ results.genes != '' ]
         if matched.shape != self.expected_match_tol_250_known:
             raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_250_known}. Perhaps the genome data updated?")
 
     def test_fetch_genes_refGene(self):
         """ was flaky and slow on github actions, but merely slow on circleci, so disabling for now """
-        results = methylize.fetch_genes(self.source, ref='refGene', tol=10, tissue='blood', no_sync=True, use_cached=True)
+        results = methylize.fetch_genes(self.source, ref='refGene', tol=10, tissue='blood', use_cached=True, no_sync=True)
         matched = results[ results.descriptions != '' ]
         if matched.shape != self.expected_match_tol_10:
             raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_10}. Perhaps the genome data updated?")
