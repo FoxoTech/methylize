@@ -19,7 +19,7 @@ class TestGenome():
     source = Path('tests','test_dmr_regions.csv')
     expected_match_tol_250 = (1153, 11)
     expected_match_tol_100 = (499, 65) # tissue='all'
-    expected_match_tol_10 = (57, 65) # tissue='all'
+    expected_match_tol_10 = (56, 12) # tissue='blood'
     expected_match_tol_250_ncbi = (1626, 11)
     expected_match_tol_100_ncbi = (760, 11)
     expected_match_tol_250_known = (2637, 11) # (2605, 11)
