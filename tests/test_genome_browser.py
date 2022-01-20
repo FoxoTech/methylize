@@ -46,7 +46,7 @@ class TestGenome():
 
     def test_fetch_genes_refGene(self):
         """ was flaky and slow on github actions, but merely slow on circleci, so disabling for now """
-        results = methylize.fetch_genes(self.source, ref='refGene', tol=10, tissue='blood' use_cached=True)
+        results = methylize.fetch_genes(self.source, ref='refGene', tol=10, tissue='blood', use_cached=True)
         matched = results[ results.descriptions != '' ]
         if matched.shape != self.expected_match_tol_10:
             raise AssertionError(f"fetch_genes matched {matched.shape}; expected {self.expected_match_tol_10}. Perhaps the genome data updated?")
