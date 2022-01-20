@@ -194,15 +194,34 @@ Arguments:
 
     # add column(s) for gene tissue expression
     if tissue != None:
-        # tissue == 'all'
-        tissues = fetch_genes(sql="select * from hgFixed.gtexTissueV8;")
+        tissue_cache = False
+        if no_sync == True: # avoid hitting UCSC server here and use the cached copy
+            tissue_names_file = Path(package_path, 'data', f"gtexTissueV8_names.pkl")
+            tissues_file = Path(package_path, 'data', f"gtexTissueV8.pkl")
+            tissue_names_available = tissue_names_file.exists()
+            tissues_available = tissues_file.exists()
+            if not tissues_available and tissue_names_available:
+                LOGGER.warning("No cache gtex Tissues data available; downloading from UCSC.")
+            else:
+                tissues = pd.read_pickle(tissue_names_file)
+                tissue_cache = True
+        else:
+            # tissue == 'all'
+            tissues = fetch_genes(sql="select * from hgFixed.gtexTissueV8;")
         sorted_tissues = [i['name'] for i in tissues]
         gene_names = [i.split(',') for i in list(regions['genes']) if i != '']
         N_regions_with_multiple_genes = len([i for i in gene_names if len(i) > 1])
         if N_regions_with_multiple_genes > 0:
             LOGGER.warning(f"{N_regions_with_multiple_genes} of the {len(gene_names)} regions have multiple genes matching in the same region, and output won't show tissue expression levels.")
         gene_names = tuple([item for sublist in gene_names for item in sublist])
-        gtex = fetch_genes(sql=f"select name, expScores from gtexGeneV8 WHERE name in {gene_names} and score > 0;")
+
+        # next, filter the full database table by gene_names with scores
+        if tissue_cache:
+            annot = pd.read_pickle(tissues_file) # pulled with "where score > 0"
+            # annot is a list of dicts; i['score'] is a stringified list of numbers, matching order of sorted tissues
+            gtex = [i for i in annot if i['name'] in gene_names]
+        else: # SLOWER; use live database by default
+            gtex = fetch_genes(sql=f"select name, expScores from gtexGeneV8 WHERE name in {gene_names} and score > 0;")
         if len(gtex) > 0:
             # convert to a lookup dict of gene name: list of tissue scores
             gtex = {item['name']: [float(i) for i in item['expScores'].decode().split(',') if i != ''] for item in gtex}
