@@ -37,6 +37,7 @@ methylcheck = "*"
 pymysql = "*"
 toolshed = "*"
 interlap = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.8"
