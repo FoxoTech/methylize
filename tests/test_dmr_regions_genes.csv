@@ -30,7 +30,7 @@
 28,1,2697810,2697860,0.001964,1,0.0002684,1.0,cg16243652,,,,
 29,1,2756266,2756316,0.007965,1,0.001122,1.0,cg13082642,,,,
 30,1,2802177,2802227,0.004776,1,0.0006653,1.0,cg08142858,,,,
-31,1,2894846,2894896,0.001846,1,0.000252,1.0,cg06757928,BAG6,6," | Homo sapiens BAG cochaperone 6 (BAG6), transcript variant 3, mRNA. (from RefSeq NM_080703) | Homo sapiens BAG cochaperone 6 (BAG6), transcript variant 5, mRNA. (from RefSeq NM_001199697)",86.62
+31,1,2894846,2894896,0.001846,1,0.000252,1.0,cg06757928,BAG6,6," | Homo sapiens BAG cochaperone 6 (BAG6), transcript variant 5, mRNA. (from RefSeq NM_001199697) | Homo sapiens BAG cochaperone 6 (BAG6), transcript variant 3, mRNA. (from RefSeq NM_080703)",86.62
 32,1,2894989,2895039,0.04739,1,0.006993,1.0,cg10520226,,,,
 33,1,2947236,2947300,0.008886,2,0.001246,1.0,cg24592500,,,,
 34,1,4711622,4711672,0.04007,1,0.005877,1.0,cg02837536,,,,
@@ -211,7 +211,7 @@
 209,22,50605625,50605675,0.04597,1,0.006774,1.0,cg24228559,,,,
 210,22,50675176,50675226,0.00791,1,0.001114,1.0,cg04190002,,,,
 211,X,2812625,2812675,0.0,1,1e-07,0.005966,cg13176022,,,,
-212,X,2828292,2828429,6.223e-16,2,6.025e-17,2.425e-12,cg19743270,LTB,2,"Homo sapiens lymphotoxin beta (LTB), transcript variant 1, mRNA. (from RefSeq NM_002341) | Homo sapiens lymphotoxin beta (LTB), transcript variant 2, mRNA. (from RefSeq NM_009588)",201.5
+212,X,2828292,2828429,6.223e-16,2,6.025e-17,2.425e-12,cg19743270,LTB,2,"Homo sapiens lymphotoxin beta (LTB), transcript variant 2, mRNA. (from RefSeq NM_009588) | Homo sapiens lymphotoxin beta (LTB), transcript variant 1, mRNA. (from RefSeq NM_002341)",201.5
 213,X,2829998,2830048,7.276000000000001e-31,1,6.096e-32,3.648e-27,cg16158045,,,,
 214,X,2830193,2830243,3.2290000000000003e-35,1,2.576e-36,1.542e-31,cg25172603,,,,
 215,X,2832060,2832110,0.001374,1,0.0001864,1.0,cg22130067,,,,
@@ -231,7 +231,7 @@
 229,X,2930340,2930390,0.00454,1,0.0006308,1.0,cg04710661,,,,
 230,X,2930782,2930832,0.0001239,1,1.61e-05,0.6184,cg16841079,NCR3,-5,"Homo sapiens natural cytotoxicity triggering receptor 3 (NCR3), transcript variant 1, mRNA. (from RefSeq NM_147130) | Homo sapiens natural cytotoxicity triggering receptor 3 (NCR3), transcript variant 2, mRNA. (from RefSeq NM_001145466)",16.65
 231,X,2932592,2932642,0.0,1,1e-07,0.005966,cg09823452,,,,
-232,X,2934804,2934854,8.913000000000001e-20,1,8.516e-21,5.096e-16,cg08464958,ARSL,-5,"Homo sapiens arylsulfatase L (ARSL), transcript variant 4, mRNA. (from RefSeq NM_001369079) | Homo sapiens arylsulfatase L (ARSL), transcript variant 5, mRNA. (from RefSeq NM_001369080) | Homo sapiens arylsulfatase L (ARSL), transcript variant 3, mRNA. (from RefSeq NM_001282631)",
+232,X,2934804,2934854,8.913000000000001e-20,1,8.516e-21,5.096e-16,cg08464958,ARSL,-5,"Homo sapiens arylsulfatase L (ARSL), transcript variant 5, mRNA. (from RefSeq NM_001369080) | Homo sapiens arylsulfatase L (ARSL), transcript variant 4, mRNA. (from RefSeq NM_001369079) | Homo sapiens arylsulfatase L (ARSL), transcript variant 3, mRNA. (from RefSeq NM_001282631)",
 233,X,2949644,2949694,2.001e-13,1,2.125e-14,1.269e-09,cg12071297,,,,
 234,X,2952458,2952508,0.0001598,1,2.084e-05,0.7127,cg16771588,,,,
 235,X,2964142,2964342,5.684e-10,3,5.823e-09,8.712e-05,cg22376897,,,,
@@ -242,7 +242,7 @@
 240,X,3066537,3066808,7.905e-06,5,6.171e-05,0.494,cg06883934,,,,
 241,X,3068052,3068102,4.407e-20,1,4.194e-21,2.51e-16,cg01080552,,,,
 242,X,3079056,3079106,0.01606,1,0.002296,1.0,cg03845359,,,,
-243,X,3112594,3112644,1.894e-17,1,1.872e-18,1.12e-13,cg27435799,ZNF205,9,"Homo sapiens zinc finger protein 205 (ZNF205), transcript variant 2, mRNA. (from RefSeq NM_001042428) | Homo sapiens zinc finger protein 205 (ZNF205), transcript variant 1, mRNA. (from RefSeq NM_003456)",0.655
+243,X,3112594,3112644,1.894e-17,1,1.872e-18,1.12e-13,cg27435799,ZNF205,9,"Homo sapiens zinc finger protein 205 (ZNF205), transcript variant 1, mRNA. (from RefSeq NM_003456) | Homo sapiens zinc finger protein 205 (ZNF205), transcript variant 2, mRNA. (from RefSeq NM_001042428)",0.655
 244,X,3306529,3306579,1.75e-23,1,1.5899999999999999e-24,9.515e-20,cg06302402,,,,
 245,X,3311431,3311481,0.0004776,1,6.353e-05,0.9777,cg10861033,,,,
 246,X,3316880,3316930,3.548e-08,1,4.163e-09,0.0002491,cg07842130,,,,
@@ -513,7 +513,7 @@
 511,X,13378872,13378922,0.001293,1,0.0001752,1.0,cg26025071,,,,
 512,X,13379209,13379259,2.867e-05,1,3.639e-06,0.1957,cg17505409,,,,
 513,X,13565653,13565703,6.589e-08,1,7.782e-09,0.0004656,cg20199120,,,,
-514,X,13568736,13568786,1.927e-44,1,1.401e-45,8.383999999999998e-41,cg03717635,"FBLN2,BOD1L1",-3,"Homo sapiens biorientation of chromosomes in cell division 1 like 1 (BOD1L1), mRNA. (from RefSeq NM_148894) | Homo sapiens fibulin 2 (FBLN2), transcript variant 3, mRNA. (from RefSeq NM_001165035)",
+514,X,13568736,13568786,1.927e-44,1,1.401e-45,8.383999999999998e-41,cg03717635,"FBLN2,BOD1L1",-3,"Homo sapiens fibulin 2 (FBLN2), transcript variant 3, mRNA. (from RefSeq NM_001165035) | Homo sapiens biorientation of chromosomes in cell division 1 like 1 (BOD1L1), mRNA. (from RefSeq NM_148894)",
 515,X,13569387,13569609,1.292e-10,4,3.372e-09,4.544e-05,cg18419476,,,,
 516,X,13569857,13569907,0.0,1,1e-07,0.005966,cg00932276,,,,
 517,X,13570043,13570232,4.131e-34,3,6.545e-13,1.036e-08,cg12817924,,,,
@@ -653,7 +653,7 @@
 651,X,16717160,16717210,0.0003757,1,4.975e-05,0.9491,cg26391786,,,,
 652,X,16718178,16718228,0.004268,1,0.0005924,1.0,cg13872501,,,,
 653,X,16719293,16719619,2.591e-29,8,1.257e-20,1.153e-16,cg19267533,,,,
-654,X,16719837,16719887,0.00199,1,0.000272,1.0,cg23876603,NWD1,-9,"Homo sapiens NACHT and WD repeat domain containing 1 (NWD1), transcript variant 1, mRNA. (from RefSeq NM_001007525) | ",0.016
+654,X,16719837,16719887,0.00199,1,0.000272,1.0,cg23876603,NWD1,-9," | Homo sapiens NACHT and WD repeat domain containing 1 (NWD1), transcript variant 1, mRNA. (from RefSeq NM_001007525)",0.016
 655,X,16720077,16720127,4.579e-11,1,5.066e-12,3.032e-07,cg22321559,,,,
 656,X,16757998,16758048,2.286e-08,1,2.671e-09,0.0001598,ch.X.258064R,,,,
 657,X,16783566,16783616,2.404e-17,1,2.38e-18,1.424e-13,cg18420843,,,,
@@ -842,7 +842,7 @@
 840,X,20413211,20413261,0.0,1,1e-07,0.005966,cg03028216,,,,
 841,X,21373699,21373749,0.0,1,1e-07,0.005966,cg21694843,,,,
 842,X,21374206,21374266,0.0,2,1.157e-09,5.768e-05,cg05444994,,,,
-843,X,21374426,21374576,0.0,3,1.299e-10,2.592e-06,cg00878023,CNKSR2,9,"Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 4, mRNA. (from RefSeq NM_001168649) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 5, mRNA. (from RefSeq NM_001330770) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 8, mRNA. (from RefSeq NM_001330773) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 2, mRNA. (from RefSeq NM_001168647) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 1, mRNA. (from RefSeq NM_014927) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 7, mRNA. (from RefSeq NM_001330772) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 6, mRNA. (from RefSeq NM_001330771) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 3, mRNA. (from RefSeq NM_001168648)",0.111
+843,X,21374426,21374576,0.0,3,1.299e-10,2.592e-06,cg00878023,CNKSR2,9,"Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 4, mRNA. (from RefSeq NM_001168649) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 3, mRNA. (from RefSeq NM_001168648) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 1, mRNA. (from RefSeq NM_014927) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 8, mRNA. (from RefSeq NM_001330773) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 5, mRNA. (from RefSeq NM_001330770) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 2, mRNA. (from RefSeq NM_001168647) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 7, mRNA. (from RefSeq NM_001330772) | Homo sapiens connector enhancer of kinase suppressor of Ras 2 (CNKSR2), transcript variant 6, mRNA. (from RefSeq NM_001330771)",0.111
 844,X,21374870,21374920,0.0,1,1e-07,0.005966,cg26267038,,,,
 845,X,21375188,21375517,0.0,4,5.275e-19,4.798e-15,cg05747459,,,,
 846,X,21375780,21375830,1.115e-21,1,1.038e-22,6.212e-18,cg02586883,,,,
@@ -1590,7 +1590,7 @@
 1588,X,46837453,46837522,0.0,2,1.157e-09,5.016e-05,cg27513289,,,,
 1589,X,46837685,46837735,0.0,1,1e-07,0.005966,cg00433220,,,,
 1590,X,46909266,46909316,1.647e-07,1,1.964e-08,0.001175,cg09551204,,,,
-1591,X,46911719,46911816,5.863e-19,2,5.334e-20,1.645e-15,cg01960534,PTPN20,-2," | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 3, mRNA. (from RefSeq NM_001042358) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 33, mRNA. (from RefSeq NM_001352533) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 39, mRNA. (from RefSeq NM_001352539) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 24, mRNA. (from RefSeq NM_001352524) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 50, mRNA. (from RefSeq NM_001352550) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 7, mRNA. (from RefSeq NM_001042362) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 12, mRNA. (from RefSeq NM_001320686) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 14, mRNA. (from RefSeq NM_001320689) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 6, mRNA. (from RefSeq NM_001042361) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 17, mRNA. (from RefSeq NM_001320683)",0.015
+1591,X,46911719,46911816,5.863e-19,2,5.334e-20,1.645e-15,cg01960534,PTPN20,-2," | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 3, mRNA. (from RefSeq NM_001042358) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 24, mRNA. (from RefSeq NM_001352524) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 17, mRNA. (from RefSeq NM_001320683) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 14, mRNA. (from RefSeq NM_001320689) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 6, mRNA. (from RefSeq NM_001042361) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 33, mRNA. (from RefSeq NM_001352533) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 12, mRNA. (from RefSeq NM_001320686) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 50, mRNA. (from RefSeq NM_001352550) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 7, mRNA. (from RefSeq NM_001042362) | Homo sapiens protein tyrosine phosphatase non-receptor type 20 (PTPN20), transcript variant 39, mRNA. (from RefSeq NM_001352539)",0.015
 1592,X,46912145,46912195,0.0,1,1e-07,0.005966,cg17843048,,,,
 1593,X,46912418,46912499,0.0,2,1.157e-09,4.273e-05,cg10860619,JADE3,-2,"Homo sapiens jade family PHD finger 3 (JADE3), transcript variant 1, mRNA. (from RefSeq NM_014735)",0.435
 1594,X,46912959,46913009,1.681e-30,1,1.4130000000000002e-31,8.456e-27,cg17973147,,,,
@@ -1886,7 +1886,7 @@
 1884,X,48917465,48917515,4.649e-41,1,3.491e-42,2.089e-37,cg00379371,,,,
 1885,X,48917846,48917896,0.0,1,1e-07,0.005966,cg13328614,,,,
 1886,X,48918543,48918593,0.0,1,1e-07,0.005966,cg26421947,,,,
-1887,X,48918848,48918898,0.0,1,1e-07,0.005966,cg15480941,ARIH2,7," | Homo sapiens ariadne RBR E3 ubiquitin protein ligase 2 (ARIH2), transcript variant 28, non-coding RNA. (from RefSeq NR_146084) | Homo sapiens ariadne RBR E3 ubiquitin protein ligase 2 (ARIH2), transcript variant 25, mRNA. (from RefSeq NM_001349230) | Homo sapiens ariadne RBR E3 ubiquitin protein ligase 2 (ARIH2), transcript variant 29, non-coding RNA. (from RefSeq NR_146085)",10.14
+1887,X,48918848,48918898,0.0,1,1e-07,0.005966,cg15480941,ARIH2,7," | Homo sapiens ariadne RBR E3 ubiquitin protein ligase 2 (ARIH2), transcript variant 29, non-coding RNA. (from RefSeq NR_146085) | Homo sapiens ariadne RBR E3 ubiquitin protein ligase 2 (ARIH2), transcript variant 25, mRNA. (from RefSeq NM_001349230) | Homo sapiens ariadne RBR E3 ubiquitin protein ligase 2 (ARIH2), transcript variant 28, non-coding RNA. (from RefSeq NR_146084)",10.14
 1888,X,48919072,48919585,0.0,8,1.749e-17,1.02e-13,cg03692228,,,,
 1889,X,48920210,48920260,1.854e-05,1,2.336e-06,0.1305,cg04930858,,,,
 1890,X,48922331,48922381,1.502e-07,1,1.789e-08,0.00107,cg20977592,,,,
@@ -2908,7 +2908,7 @@
 2906,X,72262992,72263042,0.001122,1,0.0001515,0.9999,cg17634825,,,,
 2907,X,72278592,72278642,3.227e-06,1,3.972e-07,0.02349,cg20551211,,,,
 2908,X,72278747,72278797,2.532e-41,1,1.897e-42,1.135e-37,cg00008932,,,,
-2909,X,72301644,72301694,2.367e-25,1,2.1030000000000003e-26,1.258e-21,cg02437314,CITED1,"-1,7","Homo sapiens Cbp/p300 interacting transactivator with Glu/Asp rich carboxy-terminal domain 1 (CITED1), transcript variant 4, mRNA. (from RefSeq NM_001144887) | Homo sapiens Cbp/p300 interacting transactivator with Glu/Asp rich carboxy-terminal domain 1 (CITED1), transcript variant 3, mRNA. (from RefSeq NM_001144886) | Homo sapiens Cbp/p300 interacting transactivator with Glu/Asp rich carboxy-terminal domain 1 (CITED1), transcript variant 1, mRNA. (from RefSeq NM_004143) | Homo sapiens Cbp/p300 interacting transactivator with Glu/Asp rich carboxy-terminal domain 1 (CITED1), transcript variant 2, mRNA. (from RefSeq NM_001144885)",0.043
+2909,X,72301644,72301694,2.367e-25,1,2.1030000000000003e-26,1.258e-21,cg02437314,CITED1,"7,-1","Homo sapiens Cbp/p300 interacting transactivator with Glu/Asp rich carboxy-terminal domain 1 (CITED1), transcript variant 1, mRNA. (from RefSeq NM_004143) | Homo sapiens Cbp/p300 interacting transactivator with Glu/Asp rich carboxy-terminal domain 1 (CITED1), transcript variant 3, mRNA. (from RefSeq NM_001144886) | Homo sapiens Cbp/p300 interacting transactivator with Glu/Asp rich carboxy-terminal domain 1 (CITED1), transcript variant 4, mRNA. (from RefSeq NM_001144887) | Homo sapiens Cbp/p300 interacting transactivator with Glu/Asp rich carboxy-terminal domain 1 (CITED1), transcript variant 2, mRNA. (from RefSeq NM_001144885)",0.043
 2910,X,72302220,72302270,3.583e-22,1,3.319e-23,1.986e-18,cg23699176,,,,
 2911,X,72303430,72303480,3.0690000000000003e-31,1,2.553e-32,1.528e-27,cg03937594,,,,
 2912,X,72304916,72304966,4.362e-31,1,3.635e-32,2.175e-27,cg20346189,,,,
@@ -3481,7 +3481,7 @@
 3479,X,103377132,103377253,0.0,4,4.8060000000000005e-20,1.189e-15,cg24126759,,,,
 3480,X,103379316,103379366,0.008913,1,0.001258,1.0,cg20789378,,,,
 3481,X,103499850,103499900,2.605e-05,1,3.301e-06,0.1793,cg26684826,,,,
-3482,X,103500609,103500659,4.359e-17,1,4.333e-18,2.593e-13,cg01348942,RIMS2,0," | Homo sapiens regulating synaptic membrane exocytosis 2 (RIMS2), transcript variant 17, mRNA. (from RefSeq NM_001348496) | Homo sapiens regulating synaptic membrane exocytosis 2 (RIMS2), transcript variant 11, mRNA. (from RefSeq NM_001348490) | Homo sapiens regulating synaptic membrane exocytosis 2 (RIMS2), transcript variant 31, non-coding RNA. (from RefSeq NR_145710)",0.006
+3482,X,103500609,103500659,4.359e-17,1,4.333e-18,2.593e-13,cg01348942,RIMS2,0,"Homo sapiens regulating synaptic membrane exocytosis 2 (RIMS2), transcript variant 31, non-coding RNA. (from RefSeq NR_145710) |  | Homo sapiens regulating synaptic membrane exocytosis 2 (RIMS2), transcript variant 11, mRNA. (from RefSeq NM_001348490) | Homo sapiens regulating synaptic membrane exocytosis 2 (RIMS2), transcript variant 17, mRNA. (from RefSeq NM_001348496)",0.006
 3483,X,103500768,103500818,3.116e-06,1,3.835e-07,0.02269,cg12579995,,,,
 3484,X,103520439,103520534,1.005e-07,2,1.165e-08,0.000367,cg04035233,,,,
 3485,X,103554863,103555004,1.945e-12,2,2.019e-13,4.285e-09,cg16733946,,,,
@@ -5455,11 +5455,11 @@
 5453,X,153793405,153793455,9.452e-40,1,7.197999999999998e-41,4.307e-36,cg22903370,,,,
 5454,X,153793989,153794085,0.0,2,1.157e-09,3.605e-05,cg26035633,,,,
 5455,X,153794305,153794355,0.0,1,1e-07,0.005966,cg22784592,,,,
-5456,X,153794439,153794761,0.0,7,1.948e-16,2.063e-12,cg11520843,SSR4,-9,"Homo sapiens signal sequence receptor subunit 4 (SSR4), transcript variant 4, non-coding RNA. (from RefSeq NR_037927) | Homo sapiens signal sequence receptor subunit 4 (SSR4), transcript variant 1, mRNA. (from RefSeq NM_001204526)",34.2
+5456,X,153794439,153794761,0.0,7,1.948e-16,2.063e-12,cg11520843,SSR4,-9,"Homo sapiens signal sequence receptor subunit 4 (SSR4), transcript variant 1, mRNA. (from RefSeq NM_001204526) | Homo sapiens signal sequence receptor subunit 4 (SSR4), transcript variant 4, non-coding RNA. (from RefSeq NR_037927)",34.2
 5457,X,153794899,153795141,0.0,3,1.03e-10,1.274e-06,cg26105341,,,,
 5458,X,153796363,153796413,1.923e-17,1,1.902e-18,1.138e-13,cg06439589,,,,
 5459,X,153798437,153798487,1.777e-11,1,1.951e-12,1.168e-07,cg04064330,,,,
-5460,X,153802163,153802213,1.705e-25,1,1.5130000000000003e-26,9.054e-22,cg05435697,PDZD4,-2," | Homo sapiens PDZ domain containing 4 (PDZD4), transcript variant 2, mRNA. (from RefSeq NM_032512) | Homo sapiens PDZ domain containing 4 (PDZD4), transcript variant 5, mRNA. (from RefSeq NM_001303515) | Homo sapiens PDZ domain containing 4 (PDZD4), transcript variant 4, mRNA. (from RefSeq NM_001303514)",8.411
+5460,X,153802163,153802213,1.705e-25,1,1.5130000000000003e-26,9.054e-22,cg05435697,PDZD4,-2," | Homo sapiens PDZ domain containing 4 (PDZD4), transcript variant 4, mRNA. (from RefSeq NM_001303514) | Homo sapiens PDZ domain containing 4 (PDZD4), transcript variant 5, mRNA. (from RefSeq NM_001303515) | Homo sapiens PDZ domain containing 4 (PDZD4), transcript variant 2, mRNA. (from RefSeq NM_032512)",8.411
 5461,X,153803341,153803518,1.342e-14,2,4.544e-15,7.695e-11,cg21652638,,,,
 5462,X,153804274,153804324,9.494e-12,1,1.036e-12,6.199e-08,cg08126551,,,,
 5463,X,153804471,153804521,2.183e-12,1,2.358e-13,1.411e-08,cg11153610,,,,
