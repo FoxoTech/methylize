@@ -18,9 +18,9 @@ jobs:
     name: Test ${{ matrix.os }}, Python ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
-      max-parallel: 3
+      max-parallel: 2
       matrix:
-        os: [macOS-latest, ubuntu-latest, windows-latest]
+        os: [macos-latest] # macOS-latest wouldn't run, so skipping ubuntu-latest, windows-latest
         python-version: [3.8] # [3.6, 3.7, 3.8]
     steps:
       - name: Dump GitHub context
