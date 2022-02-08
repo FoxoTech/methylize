@@ -16,13 +16,14 @@ pylint = "*"
 pytest = "*"
 pytest-runner = "*"
 pytest-mock = "*"
-coverage = "*"
 nbsphinx = "*"
 sphinx = "*"
 # xlrd = ">=1.0.0" (after Dec 2020 xlsx not supported; use openpyxl)
 sphinxcontrib-apidoc = "*"
 m2r = "*"
 ipykernel = "*"
+coverage = "*"
+coveralls = "*"
 
 [packages]
 tqdm = "*"
@@ -36,6 +37,10 @@ methylcheck = "*"
 pymysql = "*"
 toolshed = "*"
 interlap = "*"
+pytest-cov = "*"
 
 [requires]
 python_version = "3.8"
+
+[scripts]
+test="pytest"

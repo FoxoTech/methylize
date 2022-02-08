@@ -1,5 +1,10 @@
 # Release History
 
+## v1.0.1
+- Differentially methylated regions (DMR) will no annotate via cached UCSC database (via fetch_genes) without using the internet, if user wants. (previously, it would still contact the internet database even if user told it not to)
+- Added testing via github actions, and increased speed
+- updated documentation
+
 ## v1.0.0
   - fixed bug in fetch_genes() from UCSC browser; function will now accept either the filepath or the DMR dataframe output.
 

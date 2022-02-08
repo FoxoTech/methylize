@@ -1,4 +1,4 @@
-`methylize` documentation
+methylize documentation
 =========================
 
 ---------------
