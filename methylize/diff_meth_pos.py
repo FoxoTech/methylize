@@ -99,6 +99,15 @@ Input Parameters:
         'average' - use the average of probe values in this batch
         'delete' - drop probes if NaNs are present in any sample
         'fast' - use adjacent sample probe value instead of average (much faster but less precise)
+    solver:
+        You can force it to use a different implementation of regression, mostly for debugging.
+        Options include:
+        - 'statsmodels_OLS'
+        - 'linregress' # from scipy
+        - [logit_DMP() is the default, based on statsmodels.api.Logit()]
+        - 'scratch_logit' # a hand-coded logistic regression function
+        - 'statsmodels_GLM' # for logistic regression
+
 
 Returns:
 
@@ -254,7 +263,7 @@ Returns:
 
         ##Fit least squares regression to each probe of methylation data
             ##Parallelize across all available cores using joblib
-        if kwargs.get('statsmodels_OLS'): # DEBUGGING
+        if kwargs.get('solver') == 'statsmodels_OLS':
             LOGGER.info("using statsmodels.OLS")
             func = delayed(legacy_OLS)
         else:
@@ -266,16 +275,30 @@ Returns:
         if kwargs.get('debug') == True:
             print('DEBUG MODE using linear_DMP_regression')
             probe_stats_rows = []
-            for x in tqdm(meth_data, total=len(meth_data), desc='Probes'):
+            for x in tqdm(meth_data, total=len(all_probes), desc='Probes'):
                  probe_stats_row = linear_DMP_regression(meth_data[x], pheno_data_array, alpha=alpha)
-                 #probe_stats_row_alt = legacy_OLS(meth_data[x], pheno_data_array, alpha=alpha)
+                 # probe_stats_row_alt = legacy_OLS(meth_data[x], pheno_data_array, alpha=alpha)
+                 # both functions gave identical slope, intercept, pvalues (2022-02-25) but StandardError differed.
                  probe_stats_rows.append(probe_stats_row)
-            print('data processing done!')
+            print('Data processing done!')
             linear_probe_stats = pd.concat(probe_stats_rows, axis=1)
         else:
             with Parallel(n_jobs=n_jobs) as parallel:
+                parallel_cleaned_list = []
+                multi_probe_errors = 0
+                # para_gen() generates all the data without loading into memory, and fixes mouse array redundancy                
+                def para_gen(meth_data):
+                    for _probe in meth_data:
+                        probe_data = meth_data[_probe]
+                        if isinstance(probe_data, pd.DataFrame):
+                            # happens with mouse when multiple probes have the same name
+                            probe_data = probe_data.mean(axis='columns')
+                            probe_data.name = _probe
+                            multi_probe_errors += 1
+                        # columns are probes, so each probe passes in parallel
+                        yield probe_data
                 # Apply the linear regression function to each column in meth_data (all use the same phenotype data array)
-                probe_stat_rows = parallel(func(meth_data[x], pheno_data_array, alpha=alpha) for x in meth_data) #tqdm(meth_data, total=len(all_probes)))
+                probe_stat_rows = parallel(func(probe_data, pheno_data_array, alpha=alpha) for probe_data in tqdm(para_gen(meth_data), total=len(all_probes), desc='Probes') )
                 # Concatenate the probes' statistics together into one dataframe
                 linear_probe_stats = pd.concat(probe_stat_rows, axis=1)
 
@@ -355,9 +378,9 @@ Returns:
             ##Coerce array class to integers
             pheno_data_binary = np.array(pheno_data_binary,dtype=int)
             ##Print a message to let the user know what values were converted to zeroes and ones
-            print(f"All samples with the phenotype ({list(pheno_options)[0]}) were assigned a value of 0 and all samples with the phenotype ({list(pheno_options)[1]}) were assigned a value of 1 for the logistic regression analysis.")
+            if verbose: LOGGER.info(f"Logistic regression: Phenotype ({list(pheno_options)[0]}) was assigned to 0 and ({list(pheno_options)[1]}) was assigned to 1.")
 
-        ## refine this
+        ## refine this -- moved to inside the solver function
         #pheno_data_binary = pd.DataFrame(pheno_data_binary, index=meth_data.index)
         #pheno_data_binary['const'] = 1.0
         #pheno_data_binary = pheno_data_binary.rename(columns={0:'group'})
@@ -365,11 +388,12 @@ Returns:
         ##Fit least squares regression to each probe of methylation data
             ##Parallelize across all available cores using joblib
 
-        if kwargs.get('scratch'):
+        if kwargs.get('solver') == 'scratch_logit':
             func = delayed(scratch_logit)
-        else:
+        elif kwargs.get('solver') == 'statsmodels_GLM':
             func = delayed(logistic_DMP_regression)
-
+        else:
+            func = delayed(logit_DMP)
         n_jobs = cpu_count()
         if kwargs.get('max_workers'):
             n_jobs = int(kwargs['max_workers'])
@@ -382,7 +406,7 @@ Returns:
                  #probe_stats_row = scratch_logit(meth_data[probe], pheno_data_binary)
                  probe_stats_row = logit_DMP(meth_data[probe], pheno_data_binary, debug=kwargs.get('debug'))
                  probe_stats_rows.append(probe_stats_row)
-            print('data processing done!')
+            print('Data processing done!')
             logistic_probe_stats = pd.concat(probe_stats_rows, axis=1)
         else:
             with Parallel(n_jobs=n_jobs) as parallel:
@@ -400,10 +424,7 @@ Returns:
                         # columns are probes, so each probe passes in parallel
                         yield probe_data
                 # this generates all the data without loading into memory, and fixes mouse array
-                if kwargs.get('scratch'):
-                    probe_stat_rows = tqdm(parallel(func(probe_data, pheno_data_binary, train_fraction=0.9) for probe_data in para_gen(meth_data)))
-                else:
-                    probe_stat_rows = parallel(func(probe_data, pheno_data_binary) for probe_data in para_gen(meth_data)) #tqdm(para_gen(meth_data), total=len(all_probes)))
+                probe_stat_rows = parallel(func(probe_data, pheno_data_binary) for probe_data in tqdm(para_gen(meth_data), total=len(all_probes), desc='Probes') )
                 # Concatenate the probes' statistics together into one dataframe
                 logistic_probe_stats = pd.concat(probe_stat_rows, axis=1)
 
@@ -414,10 +435,8 @@ Returns:
 
         # Pull out probes that encountered perfect separation or linear algebra errors to remove them from the
         # final stats dataframe while alerting the user to the issues fitting regressions to these individual probes
-        print(f"DEBUG {probe_stats}")
         probe_stats['fold_change'] = probe_stats['fold_change'].replace(np.inf, 10)
         probe_stats['fold_change'] = probe_stats['fold_change'].replace(-np.inf, -10)
-        print(f"DEBUG {probe_stats}")
         perfect_sep_probes = probe_stats.index[probe_stats["PValue"]==-999]
         linalg_error_probes = probe_stats.index[probe_stats["PValue"]==-995]
         singular_matrix_probes = probe_stats.index[probe_stats["PValue"]==-996]
@@ -461,7 +480,7 @@ Returns:
         if str(kwargs.get('export')).lower() == 'pkl':
             probe_stats.to_pickle(filename+'.pkl')
         if verbose == True:
-            print(f"saved {filename}.")
+            print(f"Saved {filename}.")
     # a dataframe of regression statistics with a row for each probe and a column for each statistical measure
     return probe_stats
 
@@ -553,6 +572,7 @@ Returns:
 def logistic_DMP_regression(probe_data, phenotypes, debug=False):
     """
 Runs parallelized.
+BUGGY VERSION DOES NOT GIVE CORRECT VALUES. (2022-02-25)
 This function performs a logistic regression on a single probe's worth of methylation
 data (in the form of beta/M-values). It is called by the diff_meth_pos().
 
@@ -1740,16 +1760,14 @@ def logistest():
     return result1, result2
 
 
-def test2(what='disease status'):
+def test2(what='disease status', debug=False):
     import methylize as m
     import pandas as pd
     from pathlib import Path
     path = Path('/Volumes/LEGX/GEO/GSE85566/GPL13534/')
     beta = pd.read_pickle(Path(path,'beta_values.pkl'))
-    print(beta.head())
     pheno = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))[what] # 'gender' or 'disease status'
-    print(pheno.value_counts())
-    result = m.diff_meth_pos(beta.sample(20000), pheno, 'logistic', export=False, impute='fast', verbose=True, debug=True)
+    result = m.diff_meth_pos(beta.sample(20000), pheno, 'logistic', export=False, impute='fast', verbose=True, debug=debug)
     return result
 
     m.manhattan_plot(result, '450k')
@@ -1757,12 +1775,13 @@ def test2(what='disease status'):
 
 
 
-def mantest():
+def mantest(debug=False):
     import methylize as m
     import pandas as pd
     meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
     pheno_data = [0,0,1,0,1,0] # ["0","1","0","1","0","1"]
-    res = m.diff_meth_pos(meth_data.sample(15000,axis=1), pheno_data, 'linear', export=False, debug=True)
-    return res
-    m.manhattan_plot(res, '450k', fontsize=10, fwer=0.001, save=False, palette='Gray')
+    res = m.diff_meth_pos(meth_data.sample(15000,axis=1), pheno_data, 'linear', export=False, debug=debug)
+    m.volcano_plot(res)
+    #return res
+    m.manhattan_plot(res, '450k', palette='Gray') # fontsize=10, fwer=0.001, save=False,
 """
