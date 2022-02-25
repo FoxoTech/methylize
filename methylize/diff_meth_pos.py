@@ -905,7 +905,7 @@ Inputs and Parameters:
         from being "significant" and put dotted vertical lines on chart.
         'auto' will select a beta coefficient range that excludes 95% of results from appearing significant.
     'adjust':
-        (default True) -- if this will adjust the p-value cutoff line for false discovery rate (Benjamini-Hochberg).
+        (default False) -- if this will adjust the p-value cutoff line for false discovery rate (Benjamini-Hochberg).
         Use 'fwer' to set the target rate.
     'fwer':
         family-wise error rate (default is 0.1) -- specify a probability [0 to 1.0] for false discovery rate
@@ -950,7 +950,9 @@ Returns:
     alpha = 0.05 if not kwargs.get('alpha') else kwargs.get('alpha')
     bcutoff = kwargs.get('cutoff', None)
     if bcutoff == 'auto':
-        bcutoff = (0.95*stats_results['Coefficient'].min(), 0.95*stats_results['Coefficient'].max())
+        #bcutoff = (0.95*stats_results['Coefficient'].min(), 0.95*stats_results['Coefficient'].max())
+        # biostars: 2-fold change is a reasonable cutoff
+        bcutoff = (-1,1)
 
     def_width = int(kwargs.get('width',16))
     def_height = int(kwargs.get('height',8))
@@ -965,7 +967,7 @@ Returns:
         data_type_label = 'Regression Coefficient'
     save = True if kwargs.get('save') else False
     plot_cutoff_label = kwargs.get('plot_cutoff_label', False)
-    adjust = kwargs.get('adjust', True)
+    adjust = kwargs.get('adjust', False)
 
     if bcutoff != None and type(bcutoff) in (list,tuple) and len(bcutoff) == 2:
         pre = len(stats_results)
@@ -992,11 +994,12 @@ Returns:
         if verbose:
             print(f"p-value cutoff adjusted: {bcutoff} ({prev_pvalue_cutoff_y}) ==[ fdr_bh ]==> {cutoff_adjusted[3]} ({pvalue_cutoff_y}) | {total_sig_probes} probes significant")
     else:
-        pvalue_cutoff_y = alpha
+        pvalue_cutoff_y = -np.log10(alpha)
 
 
     change_col = 'fold_change' if 'fold_change' in stats_results else 'Coefficient'
-    statistic_col = 'FDR_QValue' if adjust is True else 'PValue'
+    # statistic_col = 'FDR_QValue' if adjust is True else 'PValue'
+    statistic_col = 'PValue' # we adjust the significant cutoff line; we don't change the column of data shown
     # colors are 0=red, 1=blue, 2=silver
     palette = []
     for i in range(len(stats_results)):
@@ -1747,9 +1750,10 @@ def test2(what='disease status'):
     pheno = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))[what] # 'gender' or 'disease status'
     print(pheno.value_counts())
     result = m.diff_meth_pos(beta.sample(20000), pheno, 'logistic', export=False, impute='fast', verbose=True, debug=True)
-    #return result
+    return result
+
     m.manhattan_plot(result, '450k')
-    #m.volcano_plot(result, adjust=False, cutoff=(-0.2, 0.2))
+    m.volcano_plot(result, adjust=False, cutoff=(-0.2, 0.2))
 
 
 
@@ -1757,7 +1761,8 @@ def mantest():
     import methylize as m
     import pandas as pd
     meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
-    pheno_data = ["0","1","0","1","0","1"]
+    pheno_data = [0,0,1,0,1,0] # ["0","1","0","1","0","1"]
     res = m.diff_meth_pos(meth_data.sample(15000,axis=1), pheno_data, 'linear', export=False, debug=True)
+    return res
     m.manhattan_plot(res, '450k', fontsize=10, fwer=0.001, save=False, palette='Gray')
 """
