@@ -14,6 +14,7 @@ requirements = [
     'toolshed',
     'interlap',
     #'cpv', #'cpv @ git+https://github.com/brentp/combined-pvalues.git@v0.50.6#egg=cpv',
+    'adjustText',
 ]
 
 setup(

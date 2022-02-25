@@ -71,12 +71,26 @@ class TestInit():
     def test_diff_meth_pos_linear(self, mock):
         pheno_data = ["0","0","0","52","54","57"]
         test_results = methylize.diff_meth_pos(
-            meth_data.sample(1000, axis=1),
+            meth_data.sample(500, axis=1),
             pheno_data,
             regression_method="linear",
             export=False,
             max_workers=2)
         return test_results
+
+    @patch("matplotlib.pyplot.show")
+    def test_diff_meth_pos_linear_legacy(self, mock):
+        pheno_data = ["0","0","0","22","34","57"]
+        test_results = methylize.diff_meth_pos(
+            meth_data.sample(100, axis=1),
+            pheno_data,
+            regression_method="linear",
+            export=False,
+            max_workers=2,
+            statsmodels_OLS=True)
+        return test_results
+
+
 
     @patch("matplotlib.pyplot.show")
     def test_manhattan(self, mock):
@@ -86,7 +100,14 @@ class TestInit():
     @patch("matplotlib.pyplot.show")
     def test_volcano(self, mock):
         test_results= self.test_diff_meth_pos_linear()
-        methylize.volcano_plot(test_results, fontsize=10, cutoff=0.15, beta_coefficient_cutoff=(-0.05,0.05), save=False)
+        methylize.volcano_plot(test_results, fontsize=10, bcutoff=(-0.05,0.05), save=False)
+
+    @patch("matplotlib.pyplot.show")
+    def test_volcano_moreoptions(self, mock):
+        test_results= self.test_diff_meth_pos_linear()
+        methylize.volcano_plot(test_results, fontsize=10, cutoff=0.15, alpha=0.1, fwer=0.05,
+            cutoff=(-0.05,0.05), save=False, adjust=True, palette='Pastel1', width=8, height=4, dotsize=20,
+            data_type_label='test', plot_cutoff_label=True)
 
     @patch("matplotlib.pyplot.show")
     def test_diff_meth_pos_mouse_linear(self, mock):
