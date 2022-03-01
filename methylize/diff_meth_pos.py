@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 import statsmodels.api as sm
 from statsmodels.stats.api import DescrStatsW
-from scipy.stats import linregress, pearsonr, norm
+from scipy.stats import linregress, pearsonr, norm, sem
 from scipy.stats import t as student_t
 from joblib import Parallel, delayed, cpu_count
 from adjustText import adjust_text
@@ -99,8 +99,11 @@ Input Parameters:
         'average' - use the average of probe values in this batch
         'delete' - drop probes if NaNs are present in any sample
         'fast' - use adjacent sample probe value instead of average (much faster but less precise)
+    debug:
+        Default: False -- True turns on extra messages and runs the 'solver' in serial mode,
+        disabling parallel processing of probes. This is slower but provides more detail for debugging code.
     solver:
-        You can force it to use a different implementation of regression, mostly for debugging.
+        You can force it to use a different implementation of regression, for debugging.
         Options include:
         - 'statsmodels_OLS'
         - 'linregress' # from scipy
@@ -144,6 +147,12 @@ Returns:
     import warnings
     np.seterr(divide='ignore', over='ignore') # log10(0.0) happens
     warnings.filterwarnings("ignore") # exp(x) overflow error approximates to x=0
+
+    allowed = ['verbose', 'alpha', 'fwer', 'column', 'solver', 'max_workers', 'debug',
+    'export', 'filename']
+    if any([k for k in kwargs if k not in allowed]):
+        misspelled = ', '.join([k for k in kwargs if k not in allowed])
+        raise KeyError(f"Unrecognized agument(s): {misspelled}")
 
     #TODO
     # shrink_var:
@@ -286,7 +295,7 @@ Returns:
             with Parallel(n_jobs=n_jobs) as parallel:
                 parallel_cleaned_list = []
                 multi_probe_errors = 0
-                # para_gen() generates all the data without loading into memory, and fixes mouse array redundancy                
+                # para_gen() generates all the data without loading into memory, and fixes mouse array redundancy
                 def para_gen(meth_data):
                     for _probe in meth_data:
                         probe_data = meth_data[_probe]
@@ -446,6 +455,9 @@ Returns:
         unexplained_failures = list(probe_stats[ probe_stats.PValue.isna() ].index)
         # Remove any rows that still have NAs (probes that couldn't be analyzed due to perfect separation or LinAlgError)
         probe_stats = probe_stats.dropna(axis='index', how="any") # changed from 'all' -- so that ANY NaN will be dropped
+        if len(probe_stats) == 0:
+            LOGGER.error(f"No probes remain after filtering failed regressions:\n(perfect separation {len(perfect_sep_probes)}, Linear Algebra Error {len(linalg_error_probes)}, Singular Matrix {len(singular_matrix_probes)}, Unexplained {len(unexplained_failures)})")
+            return probe_stats
 
         # Correct all the p-values for multiple testing
         corrections = sm.stats.multipletests(probe_stats["PValue"], alpha=fwer, method="fdr_bh")
@@ -569,6 +581,97 @@ Returns:
     return probe_stats_row
 
 
+def logit_DMP(probe_data, phenotypes, debug=False):
+    """ DEFAULT method, because tested and works.
+    uses statsmodels.api.Logit
+    pass in a Series for probe data without the constant added
+
+    fold_change is log2( (pheno1.mean / pheno0.mean) ) """
+    import warnings
+    np.seterr(divide='ignore', over='ignore', invalid='ignore') # log10(0.0) happens
+    warnings.filterwarnings("ignore") # exp(x) overflow error approximates to x=0
+    probe_ID = probe_data.name
+    # look at https://github.com/cozygene/glint/blob/master/utils/regression.py
+    # uses statsmodels.Logit instead of statsmodels.GLM in EWAS
+    #        phenotypes is n X 1 (1s or 0s)
+    #        probe_data is n X 1 (the feature being tested, M-value)
+    if isinstance(probe_data, pd.Series):
+        probe_data = np.array(probe_data)
+    if probe_data.ndim == 1:
+        probe_data = probe_data.reshape(-1,1) # make sure dim is (n,1) and not(n,)
+    if phenotypes.ndim == 1:
+        phenotypes = phenotypes.reshape(-1, 1)
+
+    #### confirm shape is correct here ####
+
+    try: # log2 of ratio of group means
+        # M-values are ALREADY log2 transformed, so just use the straight up difference (effect size)
+        non_neg = np.array(list((val - probe_data.min())/(probe_data.max()-probe_data.min()) for val in probe_data))
+        fold_change = np.log2(non_neg[ phenotypes == 1 ].mean() / non_neg[ phenotypes == 0 ].mean())
+        # M-values are ALREADY log2 transformed, so just use the straight up difference (effect size)
+        #fold_change = probe_data[ phenotypes == 1 ].mean() / probe_data[ phenotypes == 0 ].mean()
+    except ZeroDivisionError as e:
+        fold_change = np.log2(non_neg[ phenotypes == 1 ].mean() / 0.001)
+
+    def calc_confidence_interval(data):
+        """ calculates a 95% confidence interval (x  +/-  t * (s/√n))
+        where data is a series of sample values for one probe."""
+        (CI_lower, CI_upper) = student_t.interval(
+            alpha=0.95, # e.g. 95%
+            df=len(data)-1, # degrees of freedom, n-1
+            loc=np.mean(data), # sample mean
+            scale= sem(data)) # standard error (stdev / sqrt-of-N)
+        return (CI_lower, CI_upper)
+    CI_lower, CI_upper = calc_confidence_interval(probe_data)
+
+    probe_data = np.insert(probe_data, 1, np.ones(len(probe_data)), axis=1)
+    logit_model = sm.Logit(phenotypes, probe_data) # sm.add_constant(probe_data) did NOT add col to numpy array
+    try:
+        results = logit_model.fit(disp=False, warn_convergence=False)
+        # probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
+        # probe_CI = np.array(probe_CI)  ##conf_int returns a pandas dataframe, easier to work with array for extracting results though
+        ##Fill in the corresponding row of the results dataframe with these values
+        probe_stats_row = pd.Series({
+                'Coefficient': results.params[0],
+                'PValue': results.pvalues[0], # slope
+                'StandardError': results.bse[0], # slope
+                'fold_change': fold_change, # effect size, assuming M-values are input == already log2 transformed betas
+                "95%CI_lower": round(CI_lower[0],3),
+                "95%CI_upper": round(CI_upper[0],3),
+                # 'slope-t': results.tvalues[0],
+                #'intercept': results.params[1],
+                #'intercept-t': results.tvalues[1],
+                #'intercept-p': results.pvalues[1],
+                #'intercept-sem': results.bse[1],
+                #'confidence': results.conf_int(0.05), not avail directly thru SKLEARN
+               }, name=probe_ID)
+    except Exception as e:
+        fields = ['Coefficient','PValue','StandardError', 'fold_change',
+            # 'slope-t', 'intercept', 'intercept-t', 'intercept-p', 'intercept-sem', 'confidence',
+            "95%CI_lower", "95%CI_upper"
+            ]
+        # If there's a perfect separation error that prevents the model from being fit (like due to small sample sizes),
+        # add that probe name to a list to alert the user later that these probes could not be fit with a logistic regression
+
+        # CATCH Warning: invalid value encountered in sqrt
+        # Warning: invalid value encountered in true_divide
+
+        if   type(e).__name__ == "PerfectSeparationError":
+            probe_stats_row = pd.Series({k:-999 for k in fields}, name=probe_ID)
+        elif type(e).__name__ == "LinAlgError":
+            probe_stats_row = pd.Series({k:-995 for k in fields}, name=probe_ID)
+        elif type(e).__name__ == 'Singular matrix':
+            probe_stats_row = pd.Series({k:-996 for k in fields}, name=probe_ID)
+        elif type(e) == IndexError:
+            # results are incomplete when all probe values are identical (no separation at all, so log(0)?)
+            probe_stats_row = pd.Series({k:-997 for k in fields}, name=probe_ID)
+        else:
+            import traceback;traceback.format_exc()
+            import pdb;pdb.set_trace()
+            raise e
+    return probe_stats_row
+
+
 def logistic_DMP_regression(probe_data, phenotypes, debug=False):
     """
 Runs parallelized.
@@ -651,85 +754,6 @@ Returns:
             "Coefficient":-995,"StandardError":-995,"PValue":-995,"95%CI_lower":-995,"95%CI_upper":-995}, name=probe_ID)
         else:
             import traceback;traceback.format_exc()
-            raise e
-    return probe_stats_row
-
-
-def logit_DMP(probe_data, phenotypes, debug=False):
-    """ uses statsmodels.api.Logit
-    pass in a Series for probe data without the constant added
-
-    fold_change is log2( (pheno1.mean / pheno0.mean) ) """
-    import warnings
-    np.seterr(divide='ignore', over='ignore', invalid='ignore') # log10(0.0) happens
-    warnings.filterwarnings("ignore") # exp(x) overflow error approximates to x=0
-    probe_ID = probe_data.name
-    # look at https://github.com/cozygene/glint/blob/master/utils/regression.py
-    # uses statsmodels.Logit instead of statsmodels.GLM in EWAS
-    #        phenotypes is n X 1 (1s or 0s)
-    #        probe_data is n X 1 (the feature being tested, M-value)
-    if isinstance(probe_data, pd.Series):
-        probe_data = np.array(probe_data)
-    if probe_data.ndim == 1:
-        probe_data = probe_data.reshape(-1,1) # make sure dim is (n,1) and not(n,)
-    if phenotypes.ndim == 1:
-        phenotypes = phenotypes.reshape(-1, 1)
-
-    #### confirm shape is correct here ####
-
-    try: # log2 of ratio of group means
-        # M-values are ALREADY log2 transformed, so just use the straight up difference (effect size)
-        non_neg = np.array(list((val - probe_data.min())/(probe_data.max()-probe_data.min()) for val in probe_data))
-        fold_change = np.log2(non_neg[ phenotypes == 1 ].mean() / non_neg[ phenotypes == 0 ].mean())
-        # M-values are ALREADY log2 transformed, so just use the straight up difference (effect size)
-        #fold_change = probe_data[ phenotypes == 1 ].mean() / probe_data[ phenotypes == 0 ].mean()
-    except ZeroDivisionError as e:
-        fold_change = np.log2(non_neg[ phenotypes == 1 ].mean() / 0.001)
-
-    probe_data = np.insert(probe_data, 1, np.ones(len(probe_data)), axis=1)
-    logit_model = sm.Logit(phenotypes, probe_data) # sm.add_constant(probe_data) did NOT add col to numpy array
-    try:
-        results = logit_model.fit(disp=False, warn_convergence=False)
-        # probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
-        # probe_CI = np.array(probe_CI)  ##conf_int returns a pandas dataframe, easier to work with array for extracting results though
-        ##Fill in the corresponding row of the results dataframe with these values
-        probe_stats_row = pd.Series({
-                'Coefficient': results.params[0],
-                'slope-t': results.tvalues[0],
-                'PValue': results.pvalues[0], # slope
-                'StandardError': results.bse[0], # slope
-                'intercept': results.params[1],
-                'intercept-t': results.tvalues[1],
-                'intercept-p': results.pvalues[1],
-                'intercept-sem': results.bse[1],
-                'fold_change': fold_change, # effect size, assuming M-values are input == already log2 transformed betas
-                #"95%CI_lower": None,
-                #"95%CI_upper": None,
-                #'confidence': results.conf_int(0.05), not avail directly thru SKLEARN
-               }, name=probe_ID)
-    except Exception as e:
-        fields = ['Coefficient','slope-t','PValue','StandardError',
-            'intercept','intercept-t','intercept-p','intercept-sem','fold_change'
-            #"95%CI_lower","95%CI_upper"
-            ]
-        # If there's a perfect separation error that prevents the model from being fit (like due to small sample sizes),
-        # add that probe name to a list to alert the user later that these probes could not be fit with a logistic regression
-
-        # CATCH Warning: invalid value encountered in sqrt
-        # Warning: invalid value encountered in true_divide
-
-        if   type(e).__name__ == "PerfectSeparationError":
-            probe_stats_row = pd.Series({k:-999 for k in fields}, name=probe_ID)
-        elif type(e).__name__ == "LinAlgError":
-            probe_stats_row = pd.Series({k:-995 for k in fields}, name=probe_ID)
-        elif type(e).__name__ == 'Singular matrix':
-            probe_stats_row = pd.Series({k:-996 for k in fields}, name=probe_ID)
-        elif type(e) == IndexError:
-            # results are incomplete when all probe values are identical (no separation at all, so log(0)?)
-            probe_stats_row = pd.Series({k:-997 for k in fields}, name=probe_ID)
-        else:
-            import traceback;traceback.format_exc()
-            import pdb;pdb.set_trace()
             raise e
     return probe_stats_row
 
@@ -929,6 +953,8 @@ Inputs and Parameters:
         Use 'fwer' to set the target rate.
     'fwer':
         family-wise error rate (default is 0.1) -- specify a probability [0 to 1.0] for false discovery rate
+    'data_type_label':
+        What to put on X-axis. Either 'Fold Change' (default) or 'Regression Coefficient'.
     visualization kwargs:
         - `palette` -- color pattern for plot -- default is [blue, red, grey]
             other palettes: ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
@@ -1001,6 +1027,8 @@ Returns:
                 (stats_results['Coefficient'] < bcutoff[0])
                 | (stats_results['Coefficient'] > bcutoff[1])
                 ].index
+        else:
+            raise ValueError(f"data_type_label must be one of (Fold Change, Regression Coefficient)")
         print(f"Excluded {pre-len(retained_stats_results)} probes outside of the specified beta coefficient range: {bcutoff}")
     elif bcutoff != None:
         print(f'WARNING: Your beta_coefficient_cutoff value ({bcutoff}) is invalid. Pass a list or tuple with two values for (min,max).')
@@ -1072,16 +1100,16 @@ Returns:
 
     has_sig_probes = False if len(stats_results[ stats_results[statistic_col] <= kwargs.get('fwer',0.1) ]) > 0 else True
     if has_sig_probes: # label these, up to 100 of them
-        top_probes = stats_results.sort_values(['FDR_QValue','PValue'], ascending=(True,True)).head(100)
+        top_probes = stats_results.sort_values(['FDR_QValue','PValue'], ascending=(True,True)).head(30)
         text_labels = []
-        counted = 1
+        #counted = 1
         top_probes['ind'] = range(len(top_probes))
         top_probes['minuslog10value'] = -np.log10(top_probes[statistic_col])
         for pname,probe in top_probes.iterrows():
-            if probe[statistic_col] < kwargs.get('fwer',0.1) or counted <= 10:
+            if probe[statistic_col] < kwargs.get('fwer',0.1): # or counted <= 10:
                 text_labels.append( plt.text(probe.ind, probe.minuslog10value, pname, fontsize='x-small', fontweight='light') )
-            counted += 1
-        adjust_text(text_labels) # , only_move={'points':'y', 'text':'y'})
+            #counted += 1
+        adjust_text(text_labels)
 
     if save:
         filename = kwargs.get('filename') if kwargs.get('filename') else f"volcano_{len(stats_results)}_{str(datetime.date.today())}.png"
@@ -1095,9 +1123,86 @@ Returns:
 
 
 def manhattan_plot(stats_results, array_type, **kwargs):
-    """ variant of basic manhattan plot, with FDR-Q on y-axis instead of p-values
+    """
+In EWAS Manhattan plots, epigenomic probe locations are displayed along the X-axis,
+with the negative logarithm of the association P-value for each single nucleotide polymorphism
+(SNP) displayed on the Y-axis, meaning that each dot on the Manhattan plot signifies a SNP.
+Because the strongest associations have the smallest P-values (e.g., 10−15),
+their negative logarithms will be the greatest (e.g., 15).
 
-    fwer (default 0.1) is used to set pvalue_cutoff_y and the FDR threshold line. """
+GWAS vs EWAS
+============
+    - genomic coordinates along chromosomes vs epigenetic probe locations along chromosomes
+    - p-values are for the probe value associations, using linear or logistic regression,
+    between phenotype A and B.
+
+Ref
+===
+    Hints of hidden heritability in GWAS. Nature 2010. (https://www.ncbi.nlm.nih.gov/pubmed/20581876)
+
+Required Inputs
+===============
+    stats_results:
+        a pandas DataFrame containing the stats_results from the linear/logistic regression run on m_values or beta_values
+        and a pair of sample phenotypes. The DataFrame must contain A "PValue" column. the default output of diff_meth_pos() will work.
+    array_type:
+        specify the type of array [450k, epic, epic+, mouse, 27k], so that probes can be mapped to chromosomes.
+
+output kwargs
+=============
+    save:
+        specify that it export an image in `png` format.
+        By default, the function only displays a plot.
+    filename:
+        specify an export filename. The default is `f"manhattan_<stats>_<timestamp>.png"`.
+
+
+visualization kwargs
+====================
+    - `verbose` (True/False) - default is True, verbose messages, if omitted.
+    - `fwer` (default 0.1) familywise error rate (fwer) is used to set p-value threshold and the FDR threshold line.
+    - `genome_build` -- NEW or OLD. Default is NEWest genome_build.
+    - `label-prefix` -- how to refer to chromosomes. By default, it shows numbers like 1 ... 22, and X, Y.
+        pass in 'CHR-' to add a prefix to plot labels, or rename with 'c' like: c01 ... c22.
+
+    There are some preset "override" options for threshold lines on plots:
+
+    - `explore`: (default False) include all FOUR significance threshold lines on plot
+        (suggestive, significant, bonferroni, and false discovery rate). Useful for data exploration.
+    - `no_thresholds`: (default False) set to True to hide all FOUR threshold lines from plot.
+    - `plain`: (default False) hide all lines AND don't label significant probes.
+    - `statsmode`: (default False) show the FDR and Bonferroni thresholds, hide the suggestive and genomic significant lines.
+
+    These allow you to toggle lines/labels on or off:
+
+    - `fdr`: (default False) draw a threshold line on plot corresponding to the adjusted false discovery rate = 0.05
+    - `bonferroni`: (default False) draw the Bonferroni threshold, correcting for multiple comparisons.
+    - `suggestive`: (default 1e-5) draw the consensus "suggestive significance" theshold at p < 1e-5,
+        or set to False to hide.
+    - `significant`: (default 5e-8) draw the consensus "genomic significance" theshold at p < 5e-8,
+        or set to False to hide.
+    - `plot_cutoff_label` (default True) label to each dotted line on the plot
+    - `label_sig_probes` (default True) labels significant probes showing the greatest difference between groups.
+
+    Chart options:
+
+    - `ymax` -- default: 50. Set to avoid plotting extremely high -10log(p) values.
+    - `width` -- figure width -- default is 16
+    - `height` -- figure height -- default is 8
+    - `fontsize` -- figure font size -- default 16
+    - `border` -- plot border --  default is OFF
+    - `palette` -- specify one of a dozen options for colors of chromosome regions on plot:
+      ['default', 'Gray', 'Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2', 'Set1', 'Set2', 'Set3',
+      'tab10', 'tab20', 'tab20b', 'tab20c', 'Gray2', 'Gray3']
+    """
+    allowed = ['verbose','width','height','fontsize','fdr','border','save','palette',
+    'fwer','ymax','plot_cutoff_label','label_sig_probes','suggestive','significant','fdr',
+    'bonferroni','explore','no_thresholds','plain','statsmode','genome_build','label_prefix',
+    'filename','save']
+    if any([k for k in kwargs if k not in allowed]):
+        misspelled = ', '.join([k for k in kwargs if k not in allowed])
+        raise KeyError(f"Unrecognized argument(s): {misspelled}")
+
     verbose = False if kwargs.get('verbose') == False else True
     def_width = int(kwargs.get('width',16))
     def_height = int(kwargs.get('height',8))
@@ -1108,10 +1213,22 @@ def manhattan_plot(stats_results, array_type, **kwargs):
     pvalue_cutoff_y = -np.log10(fwer)
     ymax = kwargs.get('ymax',50)
     plot_cutoff_label = kwargs.get('plot_cutoff_label',True)
-    adjust = kwargs.get('adjust',True)
+    label_sig_probes = kwargs.get('label_sig_probes',True)
     suggestive = kwargs.get('suggestive', 1e-5) # literature also uses 5e-7 here
     significant = kwargs.get('significant', 5e-8)
-    label_significant = kwargs.get('labels',True)
+    fdr = kwargs.get('fdr', False)
+    bonferroni = kwargs.get('bonferroni', False)
+    if kwargs.get('explore') == True:
+        suggestive = kwargs.get('suggestive', 1e-5) # if explore is True and suggestive is False, it won't display.
+        significant = kwargs.get('significant', 5e-8)
+        fdr = kwargs.get('fdr', True)
+        bonferroni = kwargs.get('bonferroni', True)
+    if kwargs.get('no_thresholds') == True:
+        suggestive, significant, fdr, bonferroni = (False, False, False, False)
+    if kwargs.get('plain') == True:
+        suggestive, significant, fdr, bonferroni, label_sig_probes = (False, False, False, False, False)
+    if kwargs.get('statsmode') == True:
+        suggestive, significant, fdr, bonferroni = (False, False, True, True)
     if kwargs.get('palette'):
         if kwargs.get('palette') not in color_schemes:
             print(f"WARNING: user supplied color palette {kwargs.get('palette')} is not a valid option! (Try: {list(color_schemes.keys())})")
@@ -1119,7 +1236,7 @@ def manhattan_plot(stats_results, array_type, **kwargs):
         else:
             colors = list(color_schemes[kwargs.get('palette')].colors)
     else:
-        colors = list(color_schemes['default'].colors)
+        colors = list(color_schemes['Gray'].colors)
 
     df = stats_results
 
@@ -1130,6 +1247,7 @@ def manhattan_plot(stats_results, array_type, **kwargs):
     NL[NL == -1] = min(np.argmax(NL),ymax) # replacing inf; capping at ymax
     df['minuslog10value'] = NL
 
+    #### MAP probes to chromosomes using NEW or OLD genome build ####
     pre_length = len(df)
     array_types = {'450k', 'epic', 'mouse', '27k', 'epic+'}
     if isinstance(array_type, methylprep.Manifest):
@@ -1139,6 +1257,7 @@ def manhattan_plot(stats_results, array_type, **kwargs):
             raise ValueError(f"Specify your array_type as one of {array_types}; '{array_type.lower()}' was not recognized.")
     else:
         manifest = methylprep.Manifest(methylprep.ArrayType(array_type), verbose=False)
+    mapinfo_col = 'OLD_MAPINFO' if kwargs.get('genome_build') == 'OLD' else 'MAPINFO'
     probe2chr = create_probe_chr_map(manifest, genome_build=kwargs.get('genome_build',None))
     mapinfo_df = create_mapinfo(manifest, genome_build=kwargs.get('genome_build',None))
 
@@ -1158,7 +1277,7 @@ def manhattan_plot(stats_results, array_type, **kwargs):
     if (len(df) + NaNs) < pre_length and verbose:
         print(f"Warning: {pre_length - len(df)} probes were removed because their names don't match methylize's lookup list")
     # drop any manifest probes that aren't in stats
-    df['MAPINFO']= mapinfo_df.loc[mapinfo_df.index.isin(df.index)][['MAPINFO']]
+    df['MAPINFO']= mapinfo_df.loc[mapinfo_df.index.isin(df.index)][[mapinfo_col]]
     df = df.sort_values('MAPINFO')
     df = df.sort_values('chromosome')
 
@@ -1198,9 +1317,12 @@ def manhattan_plot(stats_results, array_type, **kwargs):
     ax.set_xticklabels(x_labels)
     ax.set_xlim([0, len(df)])
 
-    add_cutoff_line(df, ax, arbitrary_value=suggestive, color='red', label=suggestive)
-    add_cutoff_line(df, ax, arbitrary_value=significant, color='blue', label=significant)
-    add_cutoff_line(df, ax, adjust_method='bonferroni', color='gray', label='bonferroni')
+    if not isinstance(suggestive, bool) and suggestive != False:
+        add_cutoff_line(df, ax, arbitrary_value=suggestive, color='red', label=suggestive)
+    if not isinstance(significant, bool) and significant != False:
+        add_cutoff_line(df, ax, arbitrary_value=significant, color='blue', label=significant)
+    if bonferroni:
+        add_cutoff_line(df, ax, adjust_method='bonferroni', color='gray', label='Bonferroni')
     # find the p-value where FDR-Q ~ 0.05
     no_fdr_probes = None
     try:
@@ -1212,24 +1334,25 @@ def manhattan_plot(stats_results, array_type, **kwargs):
             no_fdr_probes = True
             raise Exception("No significant probes")
         fdr_label = "{:.2e}".format(fdr_cutoff)
-        add_cutoff_line(df, ax, arbitrary_value=fdr_cutoff, color='black', label=f"FDR: {fdr_label}")
+        if fdr:
+            add_cutoff_line(df, ax, arbitrary_value=fdr_cutoff, color='black', label=f"FDR: {fdr_label}")
         no_fdr_probes = False
     except Exception as e:
         print(f"Error: {e} (FDR line omitted from plot)")
 
     if no_fdr_probes:
         pass
-    elif label_significant:
+    elif label_sig_probes:
         # label top 10 probes, or if q < 0.01; need (x,y on existing plot: x=ind, y=minuslog10value)
         top_probes = df.sort_values(['FDR_QValue','PValue'], ascending=(True,True)).head(30)
         text_labels = []
-        counted = 1
+        #counted = 1 #--- used if you want to show ANY of the best probes, regardless of statistics.
         for pname,probe in top_probes.iterrows():
             #plt.annotate(probe.MAPINFO, (probe.ind, probe.minuslog10value), xytext=(0,30), textcoords='offset points',
             #    arrowprops={'arrowstyle':'-', 'color':'black'}) #{'width':1, 'frac':1, 'headwidth':1, 'shrink':0.05})
-            if probe.FDR_QValue < 0.01 or counted <= 10:
+            if probe.FDR_QValue <= fwer: # or counted <= 10:
                 text_labels.append( plt.text(probe.ind, probe.minuslog10value, pname) )
-            counted += 1
+            #counted += 1
         adjust_text(text_labels, only_move={'points':'y', 'text':'y'})
 
     # adjust max height to ensure dotted cutoff line appears
@@ -1260,7 +1383,7 @@ def manhattan_plot(stats_results, array_type, **kwargs):
         plt.close(fig)
 
 
-def manhattan_plot_old(stats_results, array_type, **kwargs):
+def manhattan_plot_deprecated(stats_results, array_type, **kwargs):
     """
 In EWAS Manhattan plots, epigenomic probe locations are displayed along the X-axis,
 with the negative logarithm of the association P-value for each single nucleotide polymorphism
@@ -1331,7 +1454,7 @@ visualization kwargs
         - fdr_tsbh : two stage fdr correction (non-negative)
         - fdr_tsbky : two stage fdr correction (non-negative)
     - `ymax` -- default: 50. Set to avoid plotting extremely high -10log(p) values.
-    - `FDR`: plot FDR_QValue instead of PValues on plot.
+    - `fdr`: plot FDR_QValue instead of PValues on plot.
     - `plot_cutoff_label` -- default True: adds a label to the dotted line on the plot, unless set to False
     """
     verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
@@ -1345,7 +1468,7 @@ visualization kwargs
     if kwargs.get('palette') in color_schemes:
         colors = color_schemes[kwargs.get('palette')]
     else:
-        colors = color_schemes['default']
+        colors = color_schemes['Gray']
     if kwargs.get('palette') and kwargs.get('palette') not in color_schemes:
         print(f"WARNING: user supplied color palette {kwargs.get('palette')} is not a valid option! (Try: {list(color_schemes.keys())})")
     if kwargs.get('cutoff'):
@@ -1482,7 +1605,7 @@ visualization kwargs
     ax.set_ylabel('-log(p)')
 
     """
-    if plot_cutoff_label == True: # False hides both labels and the gray dotted bonferoni line
+    if plot_cutoff_label == True: # False hides both labels and the gray dotted bonferroni line
         plt.text(10, pvalue_cutoff_y + (0.01*pvalue_cutoff_y), f'FDR q=0.05', color="red")
         bonferroni = sm.stats.multipletests(probe_stats["PValue"], alpha=alpha, method='bonferroni')[3]
         blog = -np.log10(bonferroni)
@@ -1766,8 +1889,8 @@ def test2(what='disease status', debug=False):
     from pathlib import Path
     path = Path('/Volumes/LEGX/GEO/GSE85566/GPL13534/')
     beta = pd.read_pickle(Path(path,'beta_values.pkl'))
-    pheno = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))[what] # 'gender' or 'disease status'
-    result = m.diff_meth_pos(beta.sample(20000), pheno, 'logistic', export=False, impute='fast', verbose=True, debug=debug)
+    pheno = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))['disease status'] # 'gender' or 'disease status'
+    result = m.diff_meth_pos(beta.sample(2000), pheno, 'logistic', export=False, impute='fast', verbose=True)
     return result
 
     m.manhattan_plot(result, '450k')
