@@ -66,7 +66,7 @@ class TestDMP():
         res = m.diff_meth_pos(self.test_m, self.meta['source'], 'logistic')
         m.manhattan_plot(res, '450k')
         ### NOTE: (88, 10) is result locally, but (89, 10) is the result on circleci / github-actions
-        if res.shape != (89,10):
+        if res.shape not in [(89,10), (88,10)]:
             raise AssertionError(f"results shape wrong {res.shape} vs (88,10)")
         m.volcano_plot(res, alpha=0.05, adjust=True, fwer=0.01, width=20, height=20, fontsize=14, dotsize=99)
         filename = Path('data/test_logres.png')
