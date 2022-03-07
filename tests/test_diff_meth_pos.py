@@ -67,7 +67,7 @@ class TestDMP():
         m.manhattan_plot(res, '450k')
         ### NOTE: (88, 10) is result locally, but (89, 10) is the result on circleci / github-actions
         if res.shape not in [(89,10), (88,10)]:
-            raise AssertionError(f"results shape wrong {res.shape} vs (88,10)")
+            raise AssertionError(f"results shape wrong {res.shape} vs [(89, 10),(88,10)]")
         m.volcano_plot(res, alpha=0.05, adjust=True, fwer=0.01, width=20, height=20, fontsize=14, dotsize=99)
         filename = Path('data/test_logres.png')
         m.volcano_plot(res, alpha=0.05, adjust=False, fwer=0.4, width=20, height=20, fontsize=14, dotsize=99, save=True, filename=filename)
@@ -75,8 +75,8 @@ class TestDMP():
             print(f'saved volcano OK: {filename}')
             filename.unlink()
         res = m.diff_meth_pos(self.test_m, self.meta['source'], 'logistic', verbose=True, debug=True)
-        if res.shape != (89, 7): # 7 before plot; 10 after plot
-            raise AssertionError(f"results shape wrong {res.shape} vs (88,7)")
+        if res.shape not in [(89,7),(88,7)]: # 7 before plot; 10 after plot
+            raise AssertionError(f"results shape wrong {res.shape} vs [(89,7),(88,7)]")
         ref = {'Coefficient': -36.19092004319955, 'PValue': 0.5952467603296255,
             'StandardError': 12626.740574121952, 'fold_change': 0.053637267861368014,
             '95%CI_lower': -1.2397613636363634, '95%CI_upper': -0.5005227272727276,
