@@ -24,8 +24,7 @@ LOGGER.setLevel(logging.INFO)
 def diff_meth_pos(
     meth_data,
     pheno_data,
-    regression_method="linear",
-    q_cutoff=1,
+    regression_method=None,
     impute='delete',
     **kwargs):
     """
@@ -44,40 +43,46 @@ Input Parameters:
         row corresponds to a sample. IF a dataframe of beta-values is supplied instead,
         this function will detect this and convert to M-values before proceeding.
     pheno_data:
-        A list or one dimensional numpy array of phenotypes
-        for each sample row in meth_data.
-        Methylprep creates a `sample_sheet_meta_data.pkl` file containing the phenotype data for this input.
-        You just need to load it and specify which column to be used as the pheno_data.
-        - Binary phenotypes can be presented as a list/array
+        A list or one dimensional numpy array of phenotypes for each sample row in meth_data.
+        Binary phenotypes can be presented as a list/array
         of zeroes and ones or as a list/array of strings made up
-        of two unique words (i.e. "control" and "cancer"). The first
-        string in phenoData will be converted to zeroes, and the
-        second string encountered will be convered to ones for the
-        logistic regression analysis.
-        - Use numbers for phenotypes if running linear regression.
+        of two unique words (i.e. "control" and "cancer").
+        - linear regression requires a measurement for the phenotype
+        - note: methylprep creates a `sample_sheet_meta_data.pkl` file containing the phenotype
+        data for this input. You just need to load it and specify which `column` to be used as the pheno_data.
+        - If pheno_data is a pandas DataFrame, you must specify a `column` and may optionally
+        specify `covariates` from the other columns in the DataFrame. Numpy matrices are NOT supported.
     column:
-        if pheno_data is a DataFrame, column='label' will select one series to be used as the phenotype data.
-    covariates: default []
-        if pheno_data is a DataFrame, specify a list of series by column_name to be used as the covariate data
-        in the linear/regression model.
-        [currently not implemented yet]
-
+        - If pheno_data is a DataFrame, column='label' will select one series to be used as the phenotype data.
+    covariates: (default None) use to define a more complex model for logistic regression.
+        - if pheno_data is not a DataFrame, covariates will be ignored.
+        - if pheno_data is a DataFrame, and `column` is specified, and covariates is None, it will ignore other columns in pheno_data.
+        - if covariates is a list of strings, only these column names will be used as the covariate data from pheno_data.
+        - If covariates is set to True, then all other columns will be treated as covariates in logistic regression.
     regression_method: (logistic | linear)
         - Either the string "logistic" or the string "linear"
         depending on the phenotype data available.
-        - Default: "linear"
         - Phenotypes with only two options (e.g. "control" and "cancer") can be analyzed with a logistic regression
         - Continuous numeric phenotypes (e.g. age) are required to run a linear regression analysis.
-    q_cutoff:
-        - Select a cutoff value to return only those DMPs that meet a
-        particular significance threshold. Reported q-values are
-        p-values corrected according to the model's false discovery
-        rate (FDR).
-        - Default: 1 -- returns all DMPs regardless of significance.
+        - Default: auto-determine, using the data types found in `pheno_data`.
+        If it is numeric with more than 2 different labels, use "linear."
+    impute:
+        Default: 'delete' probes if ANY samples have missing data for that probe.
+        True or 'auto': if <30 samples, deletes rows; if >=30 samples, uses average.
+        False: don't impute and throw an error if NaNs present
+        'average' - use the average of probe values in this batch
+        'delete' - drop probes if NaNs are present in any sample
+        'fast' - use adjacent sample probe value instead of average (much faster but less precise)
     alpha: float
         Default is 0.05 for all tests where it applies.
     fwer: float
         Set the familywise error rate (FWER). Default is 0.05, meaning that we expect 5% of all significant differences to be false positives. 0.1 (10%) is a more conservative convention for FWER.
+    q_cutoff:
+        - Select a cutoff value (< 1.0) to return filtered results.
+        Only those DMPs that meet a particular significance threshold (e.g. 0.1) will be retained.
+        Reported q-values are p-values corrected according to the model's false discovery
+        rate (FDR).
+        - Default: 1 -- returns all DMPs regardless of significance.
     export:
         - default: False
         - if True or 'csv', saves a csv file with data
@@ -92,13 +97,6 @@ Input Parameters:
         During testing, or when running in a virtual environment like circleci or docker or lambda, the number of available cores
         is fewer than the system's reported CPU cores, and it breaks. Use this to limit the available cores
         to some arbitrary number for testing or containerized-usage.
-    impute:
-        Default: 'delete' probes if any samples have missing data for that probe.
-        True or 'auto': if <30 samples, deletes rows; if >=30 samples, uses average.
-        False: don't impute and throw an error if NaNs present
-        'average' - use the average of probe values in this batch
-        'delete' - drop probes if NaNs are present in any sample
-        'fast' - use adjacent sample probe value instead of average (much faster but less precise)
     debug:
         Default: False -- True turns on extra messages and runs the 'solver' in serial mode,
         disabling parallel processing of probes. This is slower but provides more detail for debugging code.
@@ -108,9 +106,7 @@ Input Parameters:
         - 'statsmodels_OLS'
         - 'linregress' # from scipy
         - [logit_DMP() is the default, based on statsmodels.api.Logit()]
-        - 'scratch_logit' # a hand-coded logistic regression function
         - 'statsmodels_GLM' # for logistic regression
-
 
 Returns:
 
@@ -143,34 +139,79 @@ Returns:
       - conda install -c conda-forge nodejs
       - jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
+    FUTURE PLANNED FEATURE: shrink_var
+      - If True, variance shrinkage will be employed and squeeze
+      variance using Bayes posterior means. Variance shrinkage
+      is recommended when analyzing small datasets (n < 10). NOT IMPLEMENTED YET
     """
     import warnings
     np.seterr(divide='ignore', over='ignore') # log10(0.0) happens
     warnings.filterwarnings("ignore") # exp(x) overflow error approximates to x=0
 
-    allowed = ['verbose', 'alpha', 'fwer', 'column', 'solver', 'max_workers', 'debug',
-    'export', 'filename']
+    allowed = ['verbose', 'alpha', 'fwer', 'column', 'covariates', 'solver', 'max_workers', 'debug',
+    'export', 'filename', 'q_cutoff']
     if any([k for k in kwargs if k not in allowed]):
         misspelled = ', '.join([k for k in kwargs if k not in allowed])
         raise KeyError(f"Unrecognized agument(s): {misspelled}")
 
-    #TODO
-    # shrink_var:
-    #    - If True, variance shrinkage will be employed and squeeze
-    #    variance using Bayes posterior means. Variance shrinkage
-    #    is recommended when analyzing small datasets (n < 10).
-    #    (NOT IMPLEMENTED YET)
-
-    #if kwargs != {}:
-    #   print('Additional parameters:', kwargs)
     verbose = False if kwargs.get('verbose') == False else True
     alpha = kwargs.get('alpha',0.05)
     fwer = kwargs.get('fwer',0.05)
+    q_cutoff = kwargs.get('q_cutoff',1)
+
+
+    # Check if pheno_data is a list, series, or dataframe
+    covariate_data = None
+    if isinstance(pheno_data, pd.DataFrame) and kwargs.get('column'):
+        try:
+            if kwargs.get('covariates') == True:
+                covariate_data = pheno_data.drop(kwargs.get('column'), axis=1) #all but one
+            elif isinstance(kwargs.get('covariates'), (list,tuple)):
+                try:
+                    covariate_data = pheno_data[[ covariates ]]
+                except KeyError:
+                    raise KeyError(f"Your covariates list of labels must match your pheno_data columns exactly.")
+            elif kwargs.get('covariates') == None:
+                pass # ignore extra columns in pheno_data (default)
+            pheno_data = pheno_data[kwargs.get('column')]
+        except Exception as e:
+            raise ValueError("Column name you specified for pheno_data did not work: {kwargs.get('column')} ERROR: {e}")
+    elif isinstance(pheno_data, pd.DataFrame) and pheno_data.shape[1] == 1:
+        pheno_data = pheno_data[ pheno_data.columns[0] ] # convert a single-Column DataFrame to Series
+    elif isinstance(pheno_data, pd.DataFrame):
+        raise ValueError("You must specify a column by name when passing in a DataFrame for pheno_data.")
+
+    # determine regression method, if not specified
+    if not regression_method:
+        if len(pd.Series(pheno_data).unique()) < 2:
+            raise ValueError(f"pheno_data must have at least 2 distinct values")
+        #allowed_dtypes = ('int64', 'Int64', 'float64', bool, 'datetime64', 'category', 'timedelta[ns]')
+        allowed_dtypes = (np.int64, np.float64, bool, np.float32, np.int32)
+        # NOT SURE if all np.generic objects will work like a list.
+        if isinstance(pheno_data, (list, tuple, pd.Series, np.ndarray, np.generic)):
+            if pd.Series(pheno_data).dtype == 'O' and ( all(pd.Series(pheno_data).str.isdigit())
+                or all([isinstance(i, (int,float)) for i in pd.Series(pheno_data)])):
+                # pheno IS or CAN BE converted to numeric
+                if len(pd.Series(pheno_data).unique()) == 2:
+                    regression_method = 'logistic'
+                    # a linear regression with only 2 unique values isn't any good to begin with.
+                else:
+                    regression_method = 'linear'
+            elif pd.Series(pheno_data).dtype == 'O' and len(pd.Series(pheno_data).unique()) == 2:
+                regression_method = 'logistic' # strings
+            elif pd.Series(pheno_data).dtype in allowed_dtypes and len(pd.Series(pheno_data).unique()) == 2:
+                regression_method = 'logistic'
+            elif pd.Series(pheno_data).dtype in allowed_dtypes and len(pd.Series(pheno_data).unique()) > 2:
+                regression_method = 'linear'
+            else:
+                raise ValueError("Could not understand your pheno_data.")
+        else:
+            raise ValueError(f"pheno_data must be list-like, or if a DataFrame, specify the 'column' to use.")
 
     # Check that an available regression method has been selected
     regression_options = ["logistic","linear"]
     if regression_method not in regression_options:
-        raise ValueError("Either a 'linear' or 'logistic' regression must be specified for this analysis.")
+        raise ValueError("Either 'linear' or 'logistic' regression must be specified for this analysis.")
 
     # Check that meth_data is a numpy array with float type data
     if type(meth_data) is pd.DataFrame:
@@ -190,6 +231,8 @@ Returns:
         meth_data = meth_data.transpose()
         LOGGER.debug(f"Your meth_data was transposed: {meth_data.shape}")
     # for case where meth has <27000 probes and only the OTHER axis matches phenotype length.
+    if len(pheno_data) != meth_data.shape[0] and len(pheno_data) != meth_data.shape[1]:
+        raise ValueError("Phenotype count does not match the sample count in meth_data")
     if len(pheno_data) != meth_data.shape[0] and len(pheno_data) == meth_data.shape[1]:
         meth_data = meth_data.transpose()
         LOGGER.debug(f"Your meth_data was transposed: {meth_data.shape}")
@@ -237,15 +280,6 @@ Returns:
         meth_data = meth_data.apply(np.vectorize(beta2m))
         if verbose: LOGGER.info(f"Converted your beta values into M-values; {meth_data.shape}")
 
-    # Check if pheno_data is a list, series, or dataframe
-    if isinstance(pheno_data, pd.DataFrame) and kwargs.get('column'):
-        try:
-            pheno_data = pheno_data[kwargs.get('column')]
-        except Exception as e:
-            raise ValueError("Column name you specified for pheno_data did not work: {kwargs.get('column')} ERROR: {e}")
-    elif isinstance(pheno_data, pd.DataFrame):
-        raise ValueError("You must specify a column by name when passing in a DataFrame for pheno_data.")
-
     # Check that the methylation and phenotype data correspond to the same number of samples; flip if necessary
     if len(pheno_data) != meth_data.shape[0] and len(pheno_data) != meth_data.shape[1]:
         raise ValueError(f"Methylation data and phenotypes must have the same number of samples; found {len(meth_data)} meth and {len(pheno_data)} pheno.")
@@ -259,6 +293,7 @@ Returns:
     probe_stats = pd.DataFrame(index=all_probes,columns=stat_cols)
     ##Fill with NAs
     probe_stats = probe_stats.fillna(np.nan)
+
 
     # Run OLS regression on continuous phenotype data
     if regression_method == "linear":
@@ -337,43 +372,23 @@ Returns:
         if probe_stats.shape[0] == 0:
             print(f"No DMPs were found within the q < {q_cutoff} (the significance cutoff level specified).")
 
-    ##Run logistic regression for binary phenotype data
     elif regression_method == "logistic":
-        ##Check that binary phenotype data actually has 2 distinct categories
-        pheno_options = set(pheno_data)
-        if len(pheno_options) < 2:
-            raise ValueError("Binary phenotype analysis requires 2 different phenotypes, but only 1 is detected.")
-        elif len(pheno_options) > 2:
-            raise ValueError("Binary phenotype analysis requires 2 different phenotypes, but more than 2 are detected.")
-
-        # if array elements are strings, recode
-        #test_pheno = pd.Series(pheno_data)
-        #if test_pheno.apply(type).eq(str).all():
-        #    converter_counts = dict(test_pheno.value_counts())
-        #    if len(converter_counts) != 2:
-        #        raise ValueError(f"Phenotype must have exactly two values for linear regression. Found: {converter_counts}")
-        #    converter = {k:i for i,k in enumerate(converter_counts.keys())}
-        #    pheno_data = test_pheno.replace(converter)
-        #    LOGGER.info(f"Converted phenotype: {converter} (N: {converter_counts})")
-
-        ##Check if binary phenotype data is already formatted as 0's and 1's that
-            ##can be coerced to integers
+        # Check if binary phenotype data is already formatted as 0's and 1's that can be coerced to integers
         try:
-            int(list(pheno_options)[0])
-            try:
-                int(list(pheno_options)[1])
-                integers = True
-                if 0 in pheno_options and 1 in pheno_options:
-                    zeroes_ones = True
-                else:
-                    zeroes_ones = False
-            except:
+            pheno_options = set(list(pheno_data))
+            if len(pheno_options) != 2:
+                raise ValueError("Must have exactly TWO groups for logistic regression. Found {pheno_options}")
+            int(list(pheno_options)[0]) # loosely allows anything that can be an INT to become INT.
+            int(list(pheno_options)[1])
+            integers = True
+            if 0 in pheno_options and 1 in pheno_options:
+                zeroes_ones = True
+            else:
                 zeroes_ones = False
         except:
             zeroes_ones = False
 
-        ##Format binary data as 0's and 1's if it was given as a list of strings with
-            ##2 different string values
+        # Format binary data as 0's and 1's if it was given as a list of strings with 2 different string values
         if zeroes_ones:
             pheno_data_binary = np.array(pheno_data,dtype=int)
         else:
@@ -389,17 +404,10 @@ Returns:
             ##Print a message to let the user know what values were converted to zeroes and ones
             if verbose: LOGGER.info(f"Logistic regression: Phenotype ({list(pheno_options)[0]}) was assigned to 0 and ({list(pheno_options)[1]}) was assigned to 1.")
 
-        ## refine this -- moved to inside the solver function
-        #pheno_data_binary = pd.DataFrame(pheno_data_binary, index=meth_data.index)
-        #pheno_data_binary['const'] = 1.0
-        #pheno_data_binary = pheno_data_binary.rename(columns={0:'group'})
-
-        ##Fit least squares regression to each probe of methylation data
-            ##Parallelize across all available cores using joblib
-
-        if kwargs.get('solver') == 'scratch_logit':
-            func = delayed(scratch_logit)
-        elif kwargs.get('solver') == 'statsmodels_GLM':
+        # Fit least squares regression to each probe of methylation data --> Parallel + joblib
+        # if kwargs.get('solver') == 'scratch_logit':
+        #    func = delayed(scratch_logit)
+        if kwargs.get('solver') == 'statsmodels_GLM':
             func = delayed(logistic_DMP_regression)
         else:
             func = delayed(logit_DMP)
@@ -413,7 +421,7 @@ Returns:
             for probe in tqdm(list(meth_data.columns), total=len(meth_data.columns), desc='Probes'):
                  #probe_stats_row = logistic_DMP_regression(meth_data[probe], pheno_data_binary)
                  #probe_stats_row = scratch_logit(meth_data[probe], pheno_data_binary)
-                 probe_stats_row = logit_DMP(meth_data[probe], pheno_data_binary, debug=kwargs.get('debug'))
+                 probe_stats_row = logit_DMP(meth_data[probe], pheno_data_binary, covariate_data=covariate_data, debug=kwargs.get('debug'))
                  probe_stats_rows.append(probe_stats_row)
             print('Data processing done!')
             logistic_probe_stats = pd.concat(probe_stats_rows, axis=1)
@@ -433,7 +441,7 @@ Returns:
                         # columns are probes, so each probe passes in parallel
                         yield probe_data
                 # this generates all the data without loading into memory, and fixes mouse array
-                probe_stat_rows = parallel(func(probe_data, pheno_data_binary) for probe_data in tqdm(para_gen(meth_data), total=len(all_probes), desc='Probes') )
+                probe_stat_rows = parallel(func(probe_data, pheno_data_binary, covariate_data=covariate_data) for probe_data in tqdm(para_gen(meth_data), total=len(all_probes), desc='Probes') )
                 # Concatenate the probes' statistics together into one dataframe
                 logistic_probe_stats = pd.concat(probe_stat_rows, axis=1)
 
@@ -581,12 +589,14 @@ Returns:
     return probe_stats_row
 
 
-def logit_DMP(probe_data, phenotypes, debug=False):
+def logit_DMP(probe_data, phenotypes, covariate_data=None, debug=False):
     """ DEFAULT method, because tested and works.
     uses statsmodels.api.Logit
     pass in a Series for probe data without the constant added
 
-    fold_change is log2( (pheno1.mean / pheno0.mean) ) """
+    fold_change is log2( (pheno1.mean / pheno0.mean) )
+
+    each covariate will be normalized (to 0...1 range) before running DMP."""
     import warnings
     np.seterr(divide='ignore', over='ignore', invalid='ignore') # log10(0.0) happens
     warnings.filterwarnings("ignore") # exp(x) overflow error approximates to x=0
@@ -602,7 +612,7 @@ def logit_DMP(probe_data, phenotypes, debug=False):
     if phenotypes.ndim == 1:
         phenotypes = phenotypes.reshape(-1, 1)
 
-    #### confirm shape is correct here ####
+    ### confirm shape is correct here ###
 
     try: # log2 of ratio of group means
         # M-values are ALREADY log2 transformed, so just use the straight up difference (effect size)
@@ -624,8 +634,43 @@ def logit_DMP(probe_data, phenotypes, debug=False):
         return (CI_lower, CI_upper)
     CI_lower, CI_upper = calc_confidence_interval(probe_data)
 
+    ### ADD INTERCEPT AFTER probes ###
     probe_data = np.insert(probe_data, 1, np.ones(len(probe_data)), axis=1)
-    logit_model = sm.Logit(phenotypes, probe_data) # sm.add_constant(probe_data) did NOT add col to numpy array
+    ### add covariates into the probe_data AFTER constant ###
+    if isinstance(covariate_data, type(None)):
+        pass
+    elif isinstance(covariate_data, pd.DataFrame):
+        # first, encode strings as ints for Logit.
+        for col in covariate_data.columns:
+            if covariate_data[col].dtype == 'O':
+                covariate_data[col] = covariate_data[col].astype('category').cat.codes
+                # normalize codes
+                covariate_data[col] = covariate_data[col].apply( lambda x: x/len(covariate_data[col].unique()) )
+            else:
+                try:
+                    # normalize, or, if every value is the same, like a constant with zero range, just set to 1.0
+                    cmin = covariate_data[col].min()
+                    cmax = covariate_data[col].max()
+                    if cmax > cmin:
+                        covariate_data[col] = (covariate_data[col] - cmin)/(cmax-cmin)
+                    else:
+                        covariate_data[col] = 1.0 # blanking a zero-variance column
+                except Exception as e:
+                    raise Exception(f"Encountered a covariate that could not be normalized: {e}\n{covariate_data[col]}")
+        probe_data = np.column_stack((probe_data, covariate_data))
+
+        # probe data is 2nd term; move to front, then all covars, then constant (1.0)
+        #covar_idx = list(range(len(probe_data[0])))
+        #covar_idx.remove(1) # the probe values MUST be first term.
+        #covar_idx = [1] + covar_idx
+        #probe_data = probe_data[:, covar_idx]
+        #import pdb;pdb.set_trace()
+
+    elif not isinstance(covariate_data, pd.DataFrame):
+        raise Exception(f"covariate data is not a DataFrame")
+
+
+    logit_model = sm.Logit(phenotypes, probe_data) # NOTE sm.add_constant(probe_data) did NOT add col to numpy array
     try:
         results = logit_model.fit(disp=False, warn_convergence=False)
         # probe_CI = results.conf_int(0.05)  ##returns the lower and upper bounds for the coefficient's 95% confidence interval
@@ -672,11 +717,11 @@ def logit_DMP(probe_data, phenotypes, debug=False):
     return probe_stats_row
 
 
-def logistic_DMP_regression(probe_data, phenotypes, debug=False):
+def logistic_DMP_regression(probe_data, phenotypes, covariate_data=None, debug=False):
     """
-Runs parallelized.
-BUGGY VERSION DOES NOT GIVE CORRECT VALUES. (2022-02-25)
-This function performs a logistic regression on a single probe's worth of methylation
+- Runs parallelized.
+- TESTED, and gives almost the same values as logit_DMP() (2022-02-25)
+- This function performs a logistic regression on a single probe's worth of methylation
 data (in the form of beta/M-values). It is called by the diff_meth_pos().
 
 Inputs and Parameters:
@@ -722,9 +767,18 @@ Returns:
     #groupB = probe_data.loc[ phenotypes['group'] == 1 ]
     #fold_change = (groupB.mean() - groupA.mean())/groupA.mean()
 
+    try: # fold_change: log2 of ratio of group means
+        # M-values are ALREADY log2 transformed, so just use the straight up difference (effect size)
+        non_neg = np.array(list((val - probe_data.min())/(probe_data.max()-probe_data.min()) for val in probe_data))
+        fold_change = np.log2(non_neg[ phenotypes == 1 ].mean() / non_neg[ phenotypes == 0 ].mean())
+        # M-values are ALREADY log2 transformed, so just use the straight up difference (effect size)
+        #fold_change = probe_data[ phenotypes == 1 ].mean() / probe_data[ phenotypes == 0 ].mean()
+    except ZeroDivisionError as e:
+        fold_change = np.log2(non_neg[ phenotypes == 1 ].mean() / 0.001)
+
     ## Fit the logistic model to the individual probe
     # logit = sm.Logit(probe_data, phenotypes, missing='drop')
-    logit_model = sm.GLM(probe_data, phenotypes, family=sm.families.Binomial())
+    logit_model = sm.GLM(phenotypes, sm.add_constant(probe_data), family=sm.families.Binomial())
     ## Extract desired statistical measures from logistic fit object
     try:
         #results = logit.fit(disp=debug, warn_convergence=False, method='bfgs') # so if debug is True, display is True
@@ -736,7 +790,7 @@ Returns:
         probe_SE = results.bse
         ##Fill in the corresponding row of the results dataframe with these values
         probe_stats_row = pd.Series({
-            # "fold_change": fold_change,
+            "fold_change": fold_change,
             "Coefficient": -probe_coef[0], # the R GLM logistic method matches this exactly, but the sign is reversed here. dunno why.
             "StandardError": probe_SE[0],
             "PValue": probe_pval[0],
@@ -758,9 +812,13 @@ Returns:
     return probe_stats_row
 
 
+'''
 def scratch_logit(probe_series, pheno, verbose=False, train_fraction=0.9):
     """ from https://github.com/PedroDidier/Logistic_Regression/blob/master/DiabetesLogistic_Regression/Logistic_Regression_Diabetes.py
     pass in a probe_series (samples are in rows) and a pheno (list/array with 0 or 1 for group A or B)
+
+    TESTED (2022-03-01) and not reliable. Use the other methods instead.
+    Probably the method for optimizing the prediction model isn't great. Doesn't to a loss-min function.
     """
     import pandas as pd
     import numpy as np
@@ -918,6 +976,7 @@ def scratch_logit(probe_series, pheno, verbose=False, train_fraction=0.9):
         "recall": recall,
         "delta_m": delta_m # the difference between group(0) avg and group(1) avg M-value.
         }, name=probe_ID)
+'''
 
 ##########################################
 ##########################################
@@ -1883,18 +1942,27 @@ def logistest():
     return result1, result2
 
 
-def test2(what='disease status', debug=False):
+def test3(what='disease status', debug=False):
     import methylize as m
     import pandas as pd
     from pathlib import Path
     path = Path('/Volumes/LEGX/GEO/GSE85566/GPL13534/')
     beta = pd.read_pickle(Path(path,'beta_values.pkl'))
-    pheno = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))['disease status'] # 'gender' or 'disease status'
-    result = m.diff_meth_pos(beta.sample(2000), pheno, 'logistic', export=False, impute='fast', verbose=True)
-    return result
+    pheno = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))[['disease status','gender']] # 'gender' or 'disease status'
+    sample = beta.sample(2000)
+    r1 = m.diff_meth_pos(sample, pheno, debug=True, column='disease status', covariates=True)
+    pheno3 = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))[['disease status','gender','age']]
+    r2 = m.diff_meth_pos(sample, pheno3, debug=True, column='disease status', covariates=True)
+    r3 = m.diff_meth_pos(sample, pheno, debug=True, column='disease status', covariates=None)
+    m.manhattan_plot(r1, '450k', save=True, filename='test-r1-c.png')
+    m.manhattan_plot(r2, '450k', save=True, filename='test-r2-c.png')
+    m.manhattan_plot(r3, '450k', save=True, filename='test-r3-c.png')
 
-    m.manhattan_plot(result, '450k')
-    m.volcano_plot(result, adjust=False, cutoff=(-0.2, 0.2))
+    #return r1, r2, r3
+    #result = m.diff_meth_pos(sample, pheno, 'logistic', solver='statsmodels_GLM')
+    m.manhattan_plot(result, '450k', save=True, filename='testglm.png')
+
+    #m.volcano_plot(result, adjust=False, cutoff=(-0.2, 0.2))
 
 
 
