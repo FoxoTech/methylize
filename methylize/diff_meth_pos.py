@@ -491,6 +491,11 @@ Returns:
                         print(i)
                 elif len(fail_reason) < 100:
                     print(f"Error Probes: {fail_reason}")
+        if (len(linalg_error_probes) + len(perfect_sep_probes) + len(singular_matrix_probes))/len(logistic_probe_stats.T) > 0.3:
+            print("""Linear Algebra and Perfect Separation errors occur when the dataset is (a) too small to observe
+events with low probabilities, or has (b) too many covariates in the model, leading to individual cell
+sizes that are too small. Singular Matrix Errors occur when there is no variance in the predictors
+(probe values and covariates).""")
 
     # Return
     if kwargs.get('export'):
@@ -1954,9 +1959,14 @@ def test3(what='disease status', debug=False):
     pheno3 = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))[['disease status','gender','age']]
     r2 = m.diff_meth_pos(sample, pheno3, debug=True, column='disease status', covariates=True)
     r3 = m.diff_meth_pos(sample, pheno, debug=True, column='disease status', covariates=None)
-    m.manhattan_plot(r1, '450k', save=True, filename='test-r1-c.png')
-    m.manhattan_plot(r2, '450k', save=True, filename='test-r2-c.png')
-    m.manhattan_plot(r3, '450k', save=True, filename='test-r3-c.png')
+    pheno4 = pheno3.copy()
+    pheno4['dummy'] = 5.0 # testing zero variance case
+    r4 = m.diff_meth_pos(sample, pheno4, debug=True, column='disease status', covariates=True)
+    m.manhattan_plot(r1, '450k', save=True, filename='test-r1.png')
+    m.manhattan_plot(r2, '450k', save=True, filename='test-r2.png')
+    m.manhattan_plot(r3, '450k', save=True, filename='test-r3.png')
+    m.manhattan_plot(r4, '450k', save=True, filename='test-r4.png')
+    return r4
 
     #return r1, r2, r3
     #result = m.diff_meth_pos(sample, pheno, 'logistic', solver='statsmodels_GLM')
