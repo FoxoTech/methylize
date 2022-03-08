@@ -19,7 +19,7 @@ class TestDMP():
     test_beta = pd.read_pickle(Path('data/GSE69852_beta_values.pkl')).loc[probes]
     test_m = pd.read_pickle(Path('data/GSE69852_m_values.pkl')).loc[probes]
     test_mouse = pd.read_pickle(Path('data/mouse_beta_values.pkl'))
-    test_mouse = test_mouse.mask( test_mouse.le(0.98) & test_mouse.ge(0.02) ).dropna().sample(500) # mask yields 7224 probes
+    test_mouse = test_mouse.mask( test_mouse.le(0.98) & test_mouse.ge(0.02) ).dropna().sample(1500) # mask yields 7224 probes
     meta = pd.read_pickle('data/GSE69852_GPL13534_meta_data.pkl')
     # use source or converted_age (took strings of years or weeks and made float on same time scale)
 
@@ -94,7 +94,8 @@ class TestDMP():
             'treatment': ['healthy','diseased','healthy','diseased','healthy','diseased']
         })
         res = m.diff_meth_pos(self.test_mouse, pheno, debug=True, column='treatment', covariates=True)
-        pheno['dummy'] = 5.0 # testing zero variance case, and creating many Linear Algebra errors.
+        #pheno['dummy'] = 5.0 # testing zero variance case, and creating many Linear Algebra errors.
+        pheno['dummy'] = np.random.choice([1, 3, 5, 6,9], pheno.shape[0]) # prevents high freq of LinAlg errors
         res4 = m.diff_meth_pos(self.test_mouse, pheno, debug=True, column='treatment', covariates=True)
         m.manhattan_plot(res, 'mouse', save=True, filename='data/test-res.png')
         m.manhattan_plot(res4, 'mouse', save=True, filename='data/test-res4.png')
