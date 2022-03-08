@@ -109,3 +109,189 @@ class TestDMP():
             Path('data/test-res4.png').unlink()
         else:
             raise Exception("manhattan plot file not found")
+
+
+"""
+def test():
+    import pandas as pd
+    import methylize
+    p64 = pd.read_pickle('Project_064_test/beta_values.pkl')
+    p64meta = [1,1,0,0,1,1,0,0]
+    stats = methylize.diff_meth_pos(p64.sample(100000), p64meta)
+    print(f"stats; sig probes: {(stats.FDR_QValue < 0.05).sum()} | {(stats.PValue < 0.05).sum()}")
+    methylize.manhattan_plot(stats, 'epic+')
+    return stats
+
+def test(adjust=True):
+    # run in /Volumes/LEGX/GEO/GSE143411
+    import pandas as pd
+    import methylize
+    import random
+    import methylcheck
+    df = methylcheck.load('.')
+    pheno = [random.choice([0,1]) for i in range(len(df.columns))]
+    stats = methylize.diff_meth_pos(df.sample(60000), pheno)
+    print(f"stats; sig probes: {(stats.FDR_QValue < 0.05).sum()} | {(stats.PValue < 0.05).sum()}")
+    #methylize.manhattan_plot(stats, '450k', adjust=adjust)
+    methylize.volcano_plot(stats, plot_cutoff_label=True)
+    return stats
+
+def testage():
+    folder = '/Volumes/LEGX/GEO/GSE85566/GPL13534'
+    import pandas as pd
+    import methylize
+    import random
+    import methylcheck
+    df = methylcheck.load(folder)
+    meta = pd.read_pickle('/Volumes/LEGX/GEO/GSE85566/GPL13534/GSE85566_GPL13534_meta_data.pkl')
+    pheno = meta.age
+    print(df.shape, len(meta.age))
+    stats = methylize.diff_meth_pos(df.sample(60000), pheno, regression_method='linear', fwer=0.05)
+    #methylize.manhattan_plot(stats, '450k', adjust=True)
+    methylize.volcano_plot(stats, cutoff='auto')
+    methylize.volcano_plot(stats, cutoff=None)
+    return stats
+
+# see line 643 -- where p 0.05 is too high
+# line 292, 561  -- log-regress faulty
+
+    # run in /Volumes/LEGX/GEO/GSE85566/GPL13534
+    #pheno = meta.ethnicity # .gender was overproducing differences. CAN ONLY HAVE 2 categories
+    #stats = methylize.diff_meth_pos(df.sample(60000), pheno, regression_method='logistic', fwer=0.1)
+    #print(f"stats; sig probes: {(stats.FDR_QValue < 0.05).sum()}")
+    #methylize.manhattan_plot(stats, '450k')
+    #methylize.volcano_plot(stats, plot_cutoff_label=True, beta_coefficient_cutoff=(-0.02, 0.02), cutoff=0.05)
+
+def test():
+    folder = '/Volumes/LEGX/GEO/GSE85566/GPL13534'
+    import pandas as pd
+    import methylize
+    import random
+    import methylcheck
+    df = pd.read_csv('test_probes.csv').set_index('Unnamed: 0')
+    pheno = pd.read_csv('/Volumes/LEGX/GEO/GSE85566/GPL13534/phenotypes.csv')['0']
+    stats = methylize.diff_meth_pos(df, pheno, regression_method='logistic', fwer=0.05)
+    methylize.volcano_plot(stats)
+    #stats = methylize.diff_meth_pos(df, pheno, regression_method='logistic', fwer=0.05, scratch=True)
+    methylize.volcano_plot(stats, cutoff='auto')
+    return stats
+
+def test():
+    folder = '/Volumes/LEGX/GEO/GSE85566/GPL13534'
+    import pandas as pd
+    import methylize
+    import random
+    import methylcheck
+    df = methylcheck.load(folder)
+    meta = pd.read_pickle('/Volumes/LEGX/GEO/GSE85566/GPL13534/GSE85566_GPL13534_meta_data.pkl')
+    pheno = meta.ethnicity.replace({'Other': 'EA'})
+    print(df.shape, len(meta.ethnicity))
+    #pheno = meta['disease status']
+    stats = methylize.diff_meth_pos(df.sample(30000), pheno, regression_method='logistic', fwer=0.05)
+    methylize.volcano_plot(stats, plot_cutoff_label=True, beta_coefficient_cutoff=(-0.2, 0.2), adjust=None, cutoff=0.05, fwer=0.05)
+    return stats
+
+
+def abh(pvals, q=0.05): # another false discovery rate from scratch method
+    pvals[pvals>0.99] = 0.99 # P-values equal to 1. will cause a division by zero.
+    def lsu(pvals, q=0.05):
+        m = len(pvals)
+        sort_ind = np.argsort(pvals)
+        k = [i for i, p in enumerate(pvals[sort_ind]) if p < (i+1.)*q/m]
+        significant = np.zeros(m, dtype='bool')
+        if k:
+            significant[sort_ind[0:k[-1]+1]] = True
+        return significant
+    significant = lsu(pvals, q) # If lsu does not reject any hypotheses, stop
+    if significant.all() is False:
+        return significant
+    m = len(pvals)
+    sort_ind = np.argsort(pvals)
+    m0k = [(m+1-(k+1))/(1-p) for k, p in enumerate(pvals[sort_ind])]
+    j = [i for i, k in enumerate(m0k[1:]) if k > m0k[i-1]]
+    mhat0 = int(np.ceil(min(m0k[j[0]+1], m)))
+    qstar = q*m/mhat0
+    return lsu(pvals, qstar)
+
+def fdr(p_vals):
+    from scipy.stats import rankdata
+    ranked_p_values = rankdata(p_vals)
+    fdr = p_vals * len(p_vals) / ranked_p_values
+    fdr[fdr > 1] = 1
+    return fdr
+
+def junk
+    #data = methylcheck.load(path, format='beta_csv')
+    #data = pd.read_pickle('/Volumes/LEGX/GEO/test_pipeline/GSE111629/beta_values.pkl')
+    meta.source = meta.source.str.replace('X','')
+    meta = meta[meta.source.isin(data.columns)]
+    pheno = list(meta['disease state']) # [:-1] # off by one with sample data for full datasets
+
+def man2():
+    import methylize as m
+    import pandas as pd
+    from pathlib import Path
+    path = Path('/Volumes/LEGX/GEO/GSE168921/')
+    meta = pd.read_pickle(Path(path, 'sample_sheet_meta_data.pkl'))
+    data = pd.read_pickle(Path(path, 'beta_values.pkl'))
+    pheno = list(meta.sample_group) # --- scratch requires a list, not a series
+    sample = data.sample(150000);print(sample)
+    res = m.diff_meth_pos(sample, pheno, 'logistic', export=False, impute='average', debug=True)
+    #m.manhattan_plot(res, '450k', fontsize=10, save=False, palette='Gray')
+    return res
+
+def mantest():
+    import methylize as m
+    import pandas as pd
+    from pathlib import Path
+    path = Path('/Volumes/LEGX/GEO/GSE168921/')
+    meta = pd.read_pickle(Path(path, 'sample_sheet_meta_data.pkl'))
+    data = pd.read_pickle(Path(path, 'beta_values.pkl'))
+    pheno = meta.sample_group
+    sample = data.sample(150000);print(sample)
+    res = m.diff_meth_pos(sample, pheno, 'logistic', export=False, impute='average')
+    #m.manhattan_plot(res, '450k', fontsize=10, save=False, palette='Gray')
+    return res
+
+def voltest():
+    import methylize as m
+    import pandas as pd
+    meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
+    pheno_data = ["0","33","0","52","0","57"]
+    res = m.diff_meth_pos(meth_data.sample(15000,axis=1), pheno_data, 'linear', export=False)
+    m.volcano_plot(res, adjust=True)
+
+def logistest():
+    from random import random
+    import methylize as m
+    import pandas as pd
+    from pathlib import Path
+    path = Path('/Volumes/LEGX/GEO/GSE85566/')
+    df1 = pd.read_csv(Path(path,'beta_dropped_test.csv')).set_index('IlmnID')
+    df2 = pd.read_csv(Path(path,'beta_imputed_test.csv')).set_index('IlmnID')
+    pheno = pd.read_pickle(Path(path,'GPL13534','GSE85566_GPL13534_meta_data.pkl'))
+    pheno_alt = pheno[pheno.ethnicity != 'Other']
+    pheno_vector = pheno_alt.ethnicity
+    # drop samples for 'Other' ethnicity
+    df1_alt = df1[pheno_alt.Sample_ID]
+    df2_alt = df2[pheno_alt.Sample_ID]
+    # replace some probes
+    probes = ['cg00206063', 'cg00328720', 'cg00579868', 'cg00664723', 'cg00712106']
+    ref = pheno_alt[['Sample_ID','ethnicity']].set_index('Sample_ID')
+    row = [0.01 + random()/1000 if v == 'AA' else 0.99 - random()/1000 for v in ref.values]
+    for probe in probes:
+        print(len(row), df1_alt.shape, df2_alt.shape, pheno_alt.shape)
+        df1_alt.loc[probe] = row
+        df2_alt.loc[probe] = row
+    print(df1_alt.head())
+    # convert to M-values
+    import math
+    def beta2m(val):
+        return math.log2(val/(1-val))
+    df1_alt = df1_alt.applymap(beta2m)
+    print(df1_alt.head())
+    result1 = m.diff_meth_pos(df1_alt, pheno_vector, 'logistic', export=False, verbose=True)
+    result2 = m.diff_meth_pos(df2_alt, pheno_vector, 'logistic', export=False, verbose=True)
+    return result1, result2
+
+"""

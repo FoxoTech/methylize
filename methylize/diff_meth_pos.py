@@ -405,27 +405,21 @@ Returns:
             if verbose: LOGGER.info(f"Logistic regression: Phenotype ({list(pheno_options)[0]}) was assigned to 0 and ({list(pheno_options)[1]}) was assigned to 1.")
 
         # Fit least squares regression to each probe of methylation data --> Parallel + joblib
-        # if kwargs.get('solver') == 'scratch_logit':
-        #    func = delayed(scratch_logit)
-        if kwargs.get('solver') == 'statsmodels_GLM':
-            func = delayed(logistic_DMP_regression)
-        else:
-            func = delayed(logit_DMP)
         n_jobs = cpu_count()
         if kwargs.get('max_workers'):
             n_jobs = int(kwargs['max_workers'])
+        func = logistic_DMP_regression if kwargs.get('solver') == 'statsmodels_GLM' else logit_DMP
 
         if kwargs.get('debug') == True:
             print(f'DEBUG MODE - logistic regression, kwargs: {kwargs} serial mode.')
             probe_stats_rows = []
             for probe in tqdm(list(meth_data.columns), total=len(meth_data.columns), desc='Probes'):
-                 #probe_stats_row = logistic_DMP_regression(meth_data[probe], pheno_data_binary)
-                 #probe_stats_row = scratch_logit(meth_data[probe], pheno_data_binary)
-                 probe_stats_row = logit_DMP(meth_data[probe], pheno_data_binary, covariate_data=covariate_data, debug=kwargs.get('debug'))
-                 probe_stats_rows.append(probe_stats_row)
+                probe_stats_row = func(meth_data[probe], pheno_data_binary, covariate_data=covariate_data, debug=kwargs.get('debug'))
+                probe_stats_rows.append(probe_stats_row)
             print('Data processing done!')
             logistic_probe_stats = pd.concat(probe_stats_rows, axis=1)
         else:
+            func = delayed(func)
             with Parallel(n_jobs=n_jobs) as parallel:
                 # Apply the logistic/linear regression function to each column in meth_data (all use the same phenotype data array)
                 parallel_cleaned_list = []
@@ -663,17 +657,13 @@ def logit_DMP(probe_data, phenotypes, covariate_data=None, debug=False):
                 except Exception as e:
                     raise Exception(f"Encountered a covariate that could not be normalized: {e}\n{covariate_data[col]}")
         probe_data = np.column_stack((probe_data, covariate_data))
-
         # probe data is 2nd term; move to front, then all covars, then constant (1.0)
         #covar_idx = list(range(len(probe_data[0])))
         #covar_idx.remove(1) # the probe values MUST be first term.
         #covar_idx = [1] + covar_idx
         #probe_data = probe_data[:, covar_idx]
-        #import pdb;pdb.set_trace()
-
     elif not isinstance(covariate_data, pd.DataFrame):
         raise Exception(f"covariate data is not a DataFrame")
-
 
     logit_model = sm.Logit(phenotypes, probe_data) # NOTE sm.add_constant(probe_data) did NOT add col to numpy array
     try:
@@ -781,9 +771,38 @@ Returns:
     except ZeroDivisionError as e:
         fold_change = np.log2(non_neg[ phenotypes == 1 ].mean() / 0.001)
 
+    ### ADD INTERCEPT AFTER probes ###
+    probe_data = pd.DataFrame(data={'m_value':probe_data})
+    probe_data['const'] = 1
+    ### add covariates into the probe_data AFTER constant ###
+    if isinstance(covariate_data, type(None)):
+        pass
+    elif isinstance(covariate_data, pd.DataFrame):
+        # first, encode strings as ints for Logit.
+        for col in covariate_data.columns:
+            if covariate_data[col].dtype == 'O':
+                covariate_data[col] = covariate_data[col].astype('category').cat.codes
+                # normalize codes
+                covariate_data[col] = covariate_data[col].apply( lambda x: x/len(covariate_data[col].unique()) )
+            else:
+                try:
+                    # normalize, or, if every value is the same, like a constant with zero range, just set to 1.0
+                    cmin = covariate_data[col].min()
+                    cmax = covariate_data[col].max()
+                    if cmax > cmin:
+                        covariate_data[col] = (covariate_data[col] - cmin)/(cmax-cmin)
+                    else:
+                        covariate_data[col] = 1.0 # blanking a zero-variance column
+                except Exception as e:
+                    raise Exception(f"Encountered a covariate that could not be normalized: {e}\n{covariate_data[col]}")
+            probe_data[col] = list(covariate_data[col]) # merging with index leads to NaNs, but ORDER works.
+    elif not isinstance(covariate_data, pd.DataFrame):
+        raise Exception(f"covariate data is not a DataFrame")
+
     ## Fit the logistic model to the individual probe
     # logit = sm.Logit(probe_data, phenotypes, missing='drop')
-    logit_model = sm.GLM(phenotypes, sm.add_constant(probe_data), family=sm.families.Binomial())
+    #logit_model = sm.GLM(phenotypes, sm.add_constant(probe_data), family=sm.families.Binomial())
+    logit_model = sm.GLM(phenotypes, probe_data, family=sm.families.Binomial())
     ## Extract desired statistical measures from logistic fit object
     try:
         #results = logit.fit(disp=debug, warn_convergence=False, method='bfgs') # so if debug is True, display is True
@@ -1759,192 +1778,17 @@ Returns:
     Writes a CSV file, but does not directly return an object.
     The CSV will include the DataFrame column names as headers and the index
     of the DataFrame as row names for each probe.
-"""
 
 
-
-"""
-def test():
-    import pandas as pd
-    import methylize
-    p64 = pd.read_pickle('Project_064_test/beta_values.pkl')
-    p64meta = [1,1,0,0,1,1,0,0]
-    stats = methylize.diff_meth_pos(p64.sample(100000), p64meta)
-    print(f"stats; sig probes: {(stats.FDR_QValue < 0.05).sum()} | {(stats.PValue < 0.05).sum()}")
-    methylize.manhattan_plot(stats, 'epic+')
-    return stats
-
-def test(adjust=True):
-    # run in /Volumes/LEGX/GEO/GSE143411
-    import pandas as pd
-    import methylize
-    import random
-    import methylcheck
-    df = methylcheck.load('.')
-    pheno = [random.choice([0,1]) for i in range(len(df.columns))]
-    stats = methylize.diff_meth_pos(df.sample(60000), pheno)
-    print(f"stats; sig probes: {(stats.FDR_QValue < 0.05).sum()} | {(stats.PValue < 0.05).sum()}")
-    #methylize.manhattan_plot(stats, '450k', adjust=adjust)
-    methylize.volcano_plot(stats, plot_cutoff_label=True)
-    return stats
-
-def testage():
-    folder = '/Volumes/LEGX/GEO/GSE85566/GPL13534'
-    import pandas as pd
-    import methylize
-    import random
-    import methylcheck
-    df = methylcheck.load(folder)
-    meta = pd.read_pickle('/Volumes/LEGX/GEO/GSE85566/GPL13534/GSE85566_GPL13534_meta_data.pkl')
-    pheno = meta.age
-    print(df.shape, len(meta.age))
-    stats = methylize.diff_meth_pos(df.sample(60000), pheno, regression_method='linear', fwer=0.05)
-    #methylize.manhattan_plot(stats, '450k', adjust=True)
-    methylize.volcano_plot(stats, cutoff='auto')
-    methylize.volcano_plot(stats, cutoff=None)
-    return stats
-
-# see line 643 -- where p 0.05 is too high
-# line 292, 561  -- log-regress faulty
-
-    # run in /Volumes/LEGX/GEO/GSE85566/GPL13534
-    #pheno = meta.ethnicity # .gender was overproducing differences. CAN ONLY HAVE 2 categories
-    #stats = methylize.diff_meth_pos(df.sample(60000), pheno, regression_method='logistic', fwer=0.1)
-    #print(f"stats; sig probes: {(stats.FDR_QValue < 0.05).sum()}")
-    #methylize.manhattan_plot(stats, '450k')
-    #methylize.volcano_plot(stats, plot_cutoff_label=True, beta_coefficient_cutoff=(-0.02, 0.02), cutoff=0.05)
-
-def test():
-    folder = '/Volumes/LEGX/GEO/GSE85566/GPL13534'
-    import pandas as pd
-    import methylize
-    import random
-    import methylcheck
-    df = pd.read_csv('test_probes.csv').set_index('Unnamed: 0')
-    pheno = pd.read_csv('/Volumes/LEGX/GEO/GSE85566/GPL13534/phenotypes.csv')['0']
-    stats = methylize.diff_meth_pos(df, pheno, regression_method='logistic', fwer=0.05)
-    methylize.volcano_plot(stats)
-    #stats = methylize.diff_meth_pos(df, pheno, regression_method='logistic', fwer=0.05, scratch=True)
-    methylize.volcano_plot(stats, cutoff='auto')
-    return stats
-
-def test():
-    folder = '/Volumes/LEGX/GEO/GSE85566/GPL13534'
-    import pandas as pd
-    import methylize
-    import random
-    import methylcheck
-    df = methylcheck.load(folder)
-    meta = pd.read_pickle('/Volumes/LEGX/GEO/GSE85566/GPL13534/GSE85566_GPL13534_meta_data.pkl')
-    pheno = meta.ethnicity.replace({'Other': 'EA'})
-    print(df.shape, len(meta.ethnicity))
-    #pheno = meta['disease status']
-    stats = methylize.diff_meth_pos(df.sample(30000), pheno, regression_method='logistic', fwer=0.05)
-    methylize.volcano_plot(stats, plot_cutoff_label=True, beta_coefficient_cutoff=(-0.2, 0.2), adjust=None, cutoff=0.05, fwer=0.05)
-    return stats
-
-
-def abh(pvals, q=0.05): # another false discovery rate from scratch method
-    pvals[pvals>0.99] = 0.99 # P-values equal to 1. will cause a division by zero.
-    def lsu(pvals, q=0.05):
-        m = len(pvals)
-        sort_ind = np.argsort(pvals)
-        k = [i for i, p in enumerate(pvals[sort_ind]) if p < (i+1.)*q/m]
-        significant = np.zeros(m, dtype='bool')
-        if k:
-            significant[sort_ind[0:k[-1]+1]] = True
-        return significant
-    significant = lsu(pvals, q) # If lsu does not reject any hypotheses, stop
-    if significant.all() is False:
-        return significant
-    m = len(pvals)
-    sort_ind = np.argsort(pvals)
-    m0k = [(m+1-(k+1))/(1-p) for k, p in enumerate(pvals[sort_ind])]
-    j = [i for i, k in enumerate(m0k[1:]) if k > m0k[i-1]]
-    mhat0 = int(np.ceil(min(m0k[j[0]+1], m)))
-    qstar = q*m/mhat0
-    return lsu(pvals, qstar)
-
-def fdr(p_vals):
-    from scipy.stats import rankdata
-    ranked_p_values = rankdata(p_vals)
-    fdr = p_vals * len(p_vals) / ranked_p_values
-    fdr[fdr > 1] = 1
-    return fdr
-
-def junk
-    #data = methylcheck.load(path, format='beta_csv')
-    #data = pd.read_pickle('/Volumes/LEGX/GEO/test_pipeline/GSE111629/beta_values.pkl')
-    meta.source = meta.source.str.replace('X','')
-    meta = meta[meta.source.isin(data.columns)]
-    pheno = list(meta['disease state']) # [:-1] # off by one with sample data for full datasets
-
-def man2():
-    import methylize as m
-    import pandas as pd
-    from pathlib import Path
-    path = Path('/Volumes/LEGX/GEO/GSE168921/')
-    meta = pd.read_pickle(Path(path, 'sample_sheet_meta_data.pkl'))
-    data = pd.read_pickle(Path(path, 'beta_values.pkl'))
-    pheno = list(meta.sample_group) # --- scratch requires a list, not a series
-    sample = data.sample(150000);print(sample)
-    res = m.diff_meth_pos(sample, pheno, 'logistic', export=False, impute='average', debug=True)
-    #m.manhattan_plot(res, '450k', fontsize=10, save=False, palette='Gray')
-    return res
-
-def mantest():
-    import methylize as m
-    import pandas as pd
-    from pathlib import Path
-    path = Path('/Volumes/LEGX/GEO/GSE168921/')
-    meta = pd.read_pickle(Path(path, 'sample_sheet_meta_data.pkl'))
-    data = pd.read_pickle(Path(path, 'beta_values.pkl'))
-    pheno = meta.sample_group
-    sample = data.sample(150000);print(sample)
-    res = m.diff_meth_pos(sample, pheno, 'logistic', export=False, impute='average')
-    #m.manhattan_plot(res, '450k', fontsize=10, save=False, palette='Gray')
-    return res
-
-def voltest():
+def mantest(debug=False):
     import methylize as m
     import pandas as pd
     meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
-    pheno_data = ["0","33","0","52","0","57"]
-    res = m.diff_meth_pos(meth_data.sample(15000,axis=1), pheno_data, 'linear', export=False)
-    m.volcano_plot(res, adjust=True)
-
-def logistest():
-    from random import random
-    import methylize as m
-    import pandas as pd
-    from pathlib import Path
-    path = Path('/Volumes/LEGX/GEO/GSE85566/')
-    df1 = pd.read_csv(Path(path,'beta_dropped_test.csv')).set_index('IlmnID')
-    df2 = pd.read_csv(Path(path,'beta_imputed_test.csv')).set_index('IlmnID')
-    pheno = pd.read_pickle(Path(path,'GPL13534','GSE85566_GPL13534_meta_data.pkl'))
-    pheno_alt = pheno[pheno.ethnicity != 'Other']
-    pheno_vector = pheno_alt.ethnicity
-    # drop samples for 'Other' ethnicity
-    df1_alt = df1[pheno_alt.Sample_ID]
-    df2_alt = df2[pheno_alt.Sample_ID]
-    # replace some probes
-    probes = ['cg00206063', 'cg00328720', 'cg00579868', 'cg00664723', 'cg00712106']
-    ref = pheno_alt[['Sample_ID','ethnicity']].set_index('Sample_ID')
-    row = [0.01 + random()/1000 if v == 'AA' else 0.99 - random()/1000 for v in ref.values]
-    for probe in probes:
-        print(len(row), df1_alt.shape, df2_alt.shape, pheno_alt.shape)
-        df1_alt.loc[probe] = row
-        df2_alt.loc[probe] = row
-    print(df1_alt.head())
-    # convert to M-values
-    import math
-    def beta2m(val):
-        return math.log2(val/(1-val))
-    df1_alt = df1_alt.applymap(beta2m)
-    print(df1_alt.head())
-    result1 = m.diff_meth_pos(df1_alt, pheno_vector, 'logistic', export=False, verbose=True)
-    result2 = m.diff_meth_pos(df2_alt, pheno_vector, 'logistic', export=False, verbose=True)
-    return result1, result2
+    pheno_data = [0,0,1,0,1,0] # ["0","1","0","1","0","1"]
+    res = m.diff_meth_pos(meth_data.sample(15000,axis=1), pheno_data, 'linear', export=False, debug=debug)
+    m.volcano_plot(res)
+    #return res
+    m.manhattan_plot(res, '450k', palette='Gray') # fontsize=10, fwer=0.001, save=False,
 
 
 def test3(what='disease status', debug=False):
@@ -1955,7 +1799,13 @@ def test3(what='disease status', debug=False):
     beta = pd.read_pickle(Path(path,'beta_values.pkl'))
     pheno = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))[['disease status','gender']] # 'gender' or 'disease status'
     sample = beta.sample(2000)
-    r1 = m.diff_meth_pos(sample, pheno, debug=True, column='disease status', covariates=True)
+    r1 = m.diff_meth_pos(sample, pheno, debug=True, column='disease status', covariates=True, solver='statsmodels_GLM', impute='average')
+    m.manhattan_plot(r1, '450k', save=True, filename='test-r1.png')
+    r2 = m.diff_meth_pos(sample, pheno, debug=True, column='disease status', covariates=True, impute='average')
+    m.manhattan_plot(r2, '450k', save=True, filename='test-r2.png')
+    return r1,r2
+
+
     pheno3 = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))[['disease status','gender','age']]
     r2 = m.diff_meth_pos(sample, pheno3, debug=True, column='disease status', covariates=True)
     r3 = m.diff_meth_pos(sample, pheno, debug=True, column='disease status', covariates=None)
@@ -1976,13 +1826,5 @@ def test3(what='disease status', debug=False):
 
 
 
-def mantest(debug=False):
-    import methylize as m
-    import pandas as pd
-    meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
-    pheno_data = [0,0,1,0,1,0] # ["0","1","0","1","0","1"]
-    res = m.diff_meth_pos(meth_data.sample(15000,axis=1), pheno_data, 'linear', export=False, debug=debug)
-    m.volcano_plot(res)
-    #return res
-    m.manhattan_plot(res, '450k', palette='Gray') # fontsize=10, fwer=0.001, save=False,
+
 """
