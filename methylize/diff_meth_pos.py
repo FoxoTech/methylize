@@ -142,7 +142,9 @@ Returns:
     FUTURE PLANNED FEATURE: shrink_var
       - If True, variance shrinkage will be employed and squeeze
       variance using Bayes posterior means. Variance shrinkage
-      is recommended when analyzing small datasets (n < 10). NOT IMPLEMENTED YET
+      is recommended when analyzing small datasets (n < 10).
+      See http://www.uvm.edu/~rsingle/JournalClub/papers/Smyth-SAGMB-2004_eBayes+microarray.pdf
+      [NOT IMPLEMENTED YET]
     """
     import warnings
     np.seterr(divide='ignore', over='ignore') # log10(0.0) happens
@@ -308,25 +310,24 @@ Returns:
         ##Fit least squares regression to each probe of methylation data
             ##Parallelize across all available cores using joblib
         if kwargs.get('solver') == 'statsmodels_OLS':
-            LOGGER.info("using statsmodels.OLS")
-            func = delayed(legacy_OLS)
+            func = legacy_OLS
         else:
-            func = delayed(linear_DMP_regression)
+            func = linear_DMP_regression
         n_jobs = cpu_count()
         if kwargs.get('max_workers'):
             n_jobs = int(kwargs['max_workers'])
 
         if kwargs.get('debug') == True:
-            print('DEBUG MODE using linear_DMP_regression')
+            print(f"DEBUG MODE using linear_DMP_regression kwargs: {kwargs}")
             probe_stats_rows = []
             for x in tqdm(meth_data, total=len(all_probes), desc='Probes'):
-                 probe_stats_row = linear_DMP_regression(meth_data[x], pheno_data_array, alpha=alpha)
-                 # probe_stats_row_alt = legacy_OLS(meth_data[x], pheno_data_array, alpha=alpha)
+                 probe_stats_row = func(meth_data[x], pheno_data_array, alpha=alpha)
                  # both functions gave identical slope, intercept, pvalues (2022-02-25) but StandardError differed.
                  probe_stats_rows.append(probe_stats_row)
             print('Data processing done!')
             linear_probe_stats = pd.concat(probe_stats_rows, axis=1)
         else:
+            func = delayed(func)
             with Parallel(n_jobs=n_jobs) as parallel:
                 parallel_cleaned_list = []
                 multi_probe_errors = 0
@@ -504,7 +505,7 @@ sizes that are too small. Singular Matrix Errors occur when there is no variance
     return probe_stats
 
 
-def legacy_OLS(probe_data, phenotypes, alpha=0.05):
+def legacy_OLS(probe_data, phenotypes, alpha=0.05):  # pragma: no cover
     """ to use this, specify "statsmodels_OLS" in kwargs to diff_meth_pos()
     -- this method gives the same result as the scipy.linregress method when tested in version 1.0.0"""
     probe_ID = probe_data.name
@@ -515,10 +516,11 @@ def legacy_OLS(probe_data, phenotypes, alpha=0.05):
     probe_pval = results.f_pvalue # .pvalues are not for the fitted model
     probe_stats_row = pd.Series({
         "Coefficient":probe_coef,
-        "StandardError":probe_SE[0],
+        "StandardError":probe_SE.x1,
         "PValue":probe_pval,
-        "95%CI_lower":probe_CI[0][0],
-        "95%CI_upper":probe_CI[1][0]},
+        "95%CI_lower":probe_CI[0].x1, # probe_CI[0][0],
+        "95%CI_upper":probe_CI[1].x1, # probe_CI[1][0],
+        "Rsquared": results.rsquared},
         name=probe_ID)
     return probe_stats_row
 
@@ -837,7 +839,7 @@ Returns:
 
 
 '''
-def scratch_logit(probe_series, pheno, verbose=False, train_fraction=0.9):
+def scratch_logit(probe_series, pheno, verbose=False, train_fraction=0.9): # pragma: no cover
     """ from https://github.com/PedroDidier/Logistic_Regression/blob/master/DiabetesLogistic_Regression/Logistic_Regression_Diabetes.py
     pass in a probe_series (samples are in rows) and a pheno (list/array with 0 or 1 for group A or B)
 
@@ -1383,14 +1385,12 @@ visualization kwargs
         except ValueError as e:
             print(e)
 
-    def add_cutoff_line(df, ax, adjust_method=None, arbitrary_value=None, color='grey', label=None):
+    def add_cutoff_line(df, ax, arbitrary_value=None, color='grey', label=None):
         margin_padding = min([10 + int(len(df.index)/5000.0), 50])
         if arbitrary_value:
             cutoff = -np.log10(arbitrary_value)
-        elif arbitrary_value == None and adjust_method == None:
-            raise ValueError("Either provide a cutoff value or a correction method")
         else:
-            cutoff = -np.log10(sm.stats.multipletests(df["PValue"], alpha=fwer, method=adjust_method)[3])
+            raise ValueError("You must provide a cutoff p-value (it will be -log10 transformed)")
         xy_line = {'x':list(range(len(df))), 'y': [cutoff for i in range(len(df))]}
         pd.DataFrame(xy_line).plot(kind='line', x='x', y='y', color=color, ax=ax, legend=False, style='--')
         if label:
@@ -1405,7 +1405,9 @@ visualization kwargs
     if not isinstance(significant, bool) and significant != False:
         add_cutoff_line(df, ax, arbitrary_value=significant, color='blue', label=significant)
     if bonferroni:
-        add_cutoff_line(df, ax, adjust_method='bonferroni', color='gray', label='Bonferroni')
+        bonferroni_cutoff = sm.stats.multipletests(df["PValue"], alpha=fwer, method='bonferroni')[3]
+        bonferroni_cutoff_label = "{:.2e}".format(bonferroni_cutoff)
+        add_cutoff_line(df, ax, arbitrary_value=bonferroni_cutoff, color='gray', label=f"Bonferroni: {bonferroni_cutoff_label}")
     # find the p-value where FDR-Q ~ 0.05
     no_fdr_probes = None
     try:
@@ -1466,8 +1468,46 @@ visualization kwargs
         plt.close(fig)
 
 
-def manhattan_plot_deprecated(stats_results, array_type, **kwargs):
+def probe_corr_plot(stats, group='sig', colorby='pval'): # pragma: no cover
     """
+    - group='sig' is default (using PValue < 0.05)
+    - group='chromosome' also kinda works.
+    - colorby= pval or FDR; what to use to color the significant probes, if group='sig'
+    """
+    import matplotlib.pyplot as plt
+    temp = stats.sort_values('Coefficient') # puts uncorrelated probes in the middle
+    temp['x'] = range(len(temp.index))
+    fig,ax = plt.subplots(1,1, figsize=(12,8))
+    if colorby == 'pval':
+        temp['sig'] = temp.apply(lambda row: row['PValue'] < 0.05, axis=1)
+    elif colorby == 'FDR':
+        temp['sig'] = temp.apply(lambda row: row['FDR_QValue'] < 0.05, axis=1)
+    groups = temp.groupby(group)
+    if group == 'sig':
+        colors = {True:'tab:green', False:'tab:blue'}
+        for (label, _group) in groups:
+            ax.scatter(_group.x, _group.Coefficient, color=colors[label], s=3)
+    elif group == 'chromosome':
+        colors = color_schemes['default']
+        colors = list(colors.colors)
+        index = 0
+        for num, (label, _group) in enumerate(groups):
+            ind_sub = [index + i for i in range(len(_group))]
+            repeat_color = colors[num % len(colors)]
+            ax.scatter(ind_sub, _group['Coefficient'], color=repeat_color, s=3)
+            index += len(ind_sub)
+    ax.fill_between(temp['x'], temp['95%CI_lower'], temp['95%CI_upper'], color='gray', alpha=0.2)
+    ax.set_xlabel('probe index')
+    ax.set_ylabel('probe correlation between groups (r)')
+    plt.show()
+
+
+################################################
+
+"""
+
+
+def manhattan_plot_deprecated(stats_results, array_type, **kwargs):
 In EWAS Manhattan plots, epigenomic probe locations are displayed along the X-axis,
 with the negative logarithm of the association P-value for each single nucleotide polymorphism
 (SNP) displayed on the Y-axis, meaning that each dot on the Manhattan plot signifies a SNP.
@@ -1539,7 +1579,7 @@ visualization kwargs
     - `ymax` -- default: 50. Set to avoid plotting extremely high -10log(p) values.
     - `fdr`: plot FDR_QValue instead of PValues on plot.
     - `plot_cutoff_label` -- default True: adds a label to the dotted line on the plot, unless set to False
-    """
+
     verbose = False if kwargs.get('verbose') == False else True # if ommited, verbose is default ON
     def_width = int(kwargs.get('width',16))
     def_height = int(kwargs.get('height',8))
@@ -1652,7 +1692,6 @@ visualization kwargs
         if label:
             plt.text(10, cutoff + (0.01 * cutoff), label, color=color)
 
-    """
     if adjust: # True, False, None, str
         if isinstance(adjust, str):
             adjust_method = adjust
@@ -1667,7 +1706,7 @@ visualization kwargs
         # draw the p-value cutoff line
         xy_qline = {'x':list(range(len(stats_results))), 'y': [pvalue_cutoff_y for i in range(len(stats_results))]}
         df_qline = pd.DataFrame(xy_qline)
-    """
+
     ax.set_xticks(x_labels_pos)
     ax.set_xticklabels(x_labels)
     ax.set_xlim([0, len(df)])
@@ -1687,7 +1726,6 @@ visualization kwargs
     ax.set_xlabel('Chromosome')
     ax.set_ylabel('-log(p)')
 
-    """
     if plot_cutoff_label == True: # False hides both labels and the gray dotted bonferroni line
         plt.text(10, pvalue_cutoff_y + (0.01*pvalue_cutoff_y), f'FDR q=0.05', color="red")
         bonferroni = sm.stats.multipletests(probe_stats["PValue"], alpha=alpha, method='bonferroni')[3]
@@ -1697,7 +1735,7 @@ visualization kwargs
         df_bline = pd.DataFrame(xy_bline)
         plt.text(10, blog + (0.01 * blog), f'bonferroni', color="gray")
         df_bline.plot(kind='line', x='x', y='y', color='blue', ax=ax, legend=False, style='--')
-    """
+
     # hide the border; unnecessary
     if border == False:
         ax.spines['top'].set_visible(False)
@@ -1720,43 +1758,6 @@ visualization kwargs
     else:
         plt.close(fig)
 
-def probe_corr_plot(stats, group='sig', colorby='pval'): # pragma: no cover
-    """
-    - group='sig' is default (using PValue < 0.05)
-    - group='chromosome' also kinda works.
-    - colorby= pval or FDR; what to use to color the significant probes, if group='sig'
-    """
-    import matplotlib.pyplot as plt
-    temp = stats.sort_values('Coefficient') # puts uncorrelated probes in the middle
-    temp['x'] = range(len(temp.index))
-    fig,ax = plt.subplots(1,1, figsize=(12,8))
-    if colorby == 'pval':
-        temp['sig'] = temp.apply(lambda row: row['PValue'] < 0.05, axis=1)
-    elif colorby == 'FDR':
-        temp['sig'] = temp.apply(lambda row: row['FDR_QValue'] < 0.05, axis=1)
-    groups = temp.groupby(group)
-    if group == 'sig':
-        colors = {True:'tab:green', False:'tab:blue'}
-        for (label, _group) in groups:
-            ax.scatter(_group.x, _group.Coefficient, color=colors[label], s=3)
-    elif group == 'chromosome':
-        colors = color_schemes['default']
-        colors = list(colors.colors)
-        index = 0
-        for num, (label, _group) in enumerate(groups):
-            ind_sub = [index + i for i in range(len(_group))]
-            repeat_color = colors[num % len(colors)]
-            ax.scatter(ind_sub, _group['Coefficient'], color=repeat_color, s=3)
-            index += len(ind_sub)
-    ax.fill_between(temp['x'], temp['95%CI_lower'], temp['95%CI_upper'], color='gray', alpha=0.2)
-    ax.set_xlabel('probe index')
-    ax.set_ylabel('probe correlation between groups (r)')
-    plt.show()
-
-
-################################################
-
-"""
 stats_results.to_csv(filename)
 
 This function writes the pandas DataFrame output of diff_meth_pos() to a CSV file
@@ -1780,13 +1781,19 @@ Returns:
     of the DataFrame as row names for each probe.
 
 
-def mantest(debug=False):
+def mantest(debug=True):
     import methylize as m
     import pandas as pd
     meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
     pheno_data = [0,0,1,0,1,0] # ["0","1","0","1","0","1"]
-    res = m.diff_meth_pos(meth_data.sample(15000,axis=1), pheno_data, 'linear', export=False, debug=debug)
-    m.volcano_plot(res)
+    sample = meth_data.sample(5000,axis=1)
+    r1 = m.diff_meth_pos(sample, pheno_data, 'linear', export=False, debug=debug)
+    r2 = m.diff_meth_pos(sample, pheno_data, 'linear', export=False, debug=debug, solver='statsmodels_OLS')
+    for col in r2.columns:
+        print(col, (r2[col] - r1[col]).mean(), (r1[col]/r2[col]).mean(), (r1[col]/r2[col]).std())
+    return r1,r2
+
+    m.volcano_plot(r1)
     #return res
     m.manhattan_plot(res, '450k', palette='Gray') # fontsize=10, fwer=0.001, save=False,
 
@@ -1800,7 +1807,9 @@ def test3(what='disease status', debug=False):
     pheno = pd.read_pickle(Path(path,'GSE85566_GPL13534_meta_data.pkl'))[['disease status','gender']] # 'gender' or 'disease status'
     sample = beta.sample(2000)
     r1 = m.diff_meth_pos(sample, pheno, debug=True, column='disease status', covariates=True, solver='statsmodels_GLM', impute='average')
-    m.manhattan_plot(r1, '450k', save=True, filename='test-r1.png')
+    m.manhattan_plot(r1, '450k', save=False, explore=True)
+
+
     r2 = m.diff_meth_pos(sample, pheno, debug=True, column='disease status', covariates=True, impute='average')
     m.manhattan_plot(r2, '450k', save=True, filename='test-r2.png')
     return r1,r2

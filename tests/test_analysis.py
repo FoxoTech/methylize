@@ -76,7 +76,7 @@ class TestInit():
     def test_diff_meth_pos_linear_legacy(self, mock):
         pheno_data = ["0","0","0","22","34","57"]
         test_results = methylize.diff_meth_pos(
-            meth_data.sample(100, axis=1),
+            meth_data.sample(200, axis=1),
             pheno_data,
             regression_method="linear",
             export=False,
