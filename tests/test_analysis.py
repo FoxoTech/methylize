@@ -90,6 +90,8 @@ class TestInit():
     def test_manhattan(self, mock):
         test_results= self.test_diff_meth_pos_logistic()
         methylize.manhattan_plot(test_results, '450k') #, cutoff=0.01, palette='Gray3', save=False)
+        with self.assertRaises(ValueError):
+            methylize.manhattan_plot(test_results, 'epic+') # wrong array type
 
     @patch("matplotlib.pyplot.show")
     def test_volcano(self, mock):

@@ -511,7 +511,7 @@ sizes that are too small. Singular Matrix Errors occur when there is no variance
     return probe_stats
 
 
-def legacy_OLS(probe_data, phenotypes, alpha=0.05):  # pragma: no cover
+def legacy_OLS(probe_data, phenotypes, alpha=0.05): # pragma: no cover
     """ to use this, specify "statsmodels_OLS" in kwargs to diff_meth_pos()
     -- this method gives the same result as the scipy.linregress method when tested in version 1.0.0"""
     probe_ID = probe_data.name
@@ -1359,6 +1359,9 @@ visualization kwargs
         prefix = kwargs.get('label_prefix')
         df['chromosome'] = df.index.map(lambda x: probe2chr.get(x).replace('CHR-',prefix) if probe2chr.get(x) else None)
 
+    # if no probes match manifest, warn user of wrong array_type
+    if len(mapinfo_df.index.intersection(df.index)) == 0:
+        raise ValueError(f"array_type does not match the probe names provided")
     # drop probes not in manifest from plot and warn
     NaNs = 0
     if len(df[df['chromosome'].isna() == True]) > 0:
@@ -1839,7 +1842,15 @@ def test3(what='disease status', debug=False):
 
     #m.volcano_plot(result, adjust=False, cutoff=(-0.2, 0.2))
 
+def test_wrong_manifest():
+    import methylize as m
+    import pandas as pd
+    from pathlib import Path
+    df = pd.read_pickle(Path('data/GSE69852_beta_values.pkl'))
+    meta = pd.read_pickle(Path('data/GSE69852_GPL13534_meta_data.pkl'))
+    res = m.diff_meth_pos(df.sample(50000), meta['converted_age'])
 
-
+    m.manhattan_plot(res, 'epic+')
+    bed = m.diff_meth_regions(res, '450k', prefix='data')
 
 """

@@ -74,7 +74,7 @@ def chr_norm(a):
     return achr
 
 def manhattan(fname, col_num, image_path, no_log, colors, title, lines, ymax,
-             bonferonni=False, regions=None, subplots=False):
+             bonferonni=False, regions=None, subplots=False): # pragma: no cover
     """
     regions is keyed by chromosome with [(start, stop), ...] extents of
     the regions to highlight

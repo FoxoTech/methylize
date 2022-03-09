@@ -96,7 +96,7 @@ Display/output Paramters:
 
     verbose: bool -- default False
         Display additional processing information on screen.
-    plot: bool -- default True
+    plot: bool -- default False
         False will suppress the manhattan plot step.
     prefix: str
         prefix that gets appended to all output files (e.g. 'dmr' becomes 'dmr_regions.csv')

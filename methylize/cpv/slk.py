@@ -10,7 +10,7 @@ from itertools import groupby, combinations
 from stouffer_liptak import z_score_combine
 
 
-def get_corr(dist, acfs):
+def get_corr(dist, acfs): # pragma: no cover
     """
     extract the correlation from the acf sigma matrix
     given a distance.
@@ -26,7 +26,7 @@ def get_corr(dist, acfs):
             return corr
     return 0
 
-def walk(chromlist, lag_max):
+def walk(chromlist, lag_max): # pragma: no cover
     """
     for each item in chromlist, yield the item and its neighborhood
     within lag-max. These yielded values are then used to generate
@@ -48,7 +48,7 @@ def walk(chromlist, lag_max):
         # dont need to add 1 to imax because we got outside of the range above.
         yield xbed, L[imin: imax]
 
-def gen_sigma_matrix(group, acfs, cached={}):
+def gen_sigma_matrix(group, acfs, cached={}): # pragma: no cover
     a = np.eye(len(group), dtype=np.float64)
     group = enumerate(group)
     for (i, ibed), (j, jbed) in combinations(group, 2):
@@ -63,7 +63,7 @@ def gen_sigma_matrix(group, acfs, cached={}):
 
     return a
 
-def slk_chrom(chromlist, lag_max, acfs, z=True):
+def slk_chrom(chromlist, lag_max, acfs, z=True): # pragma: no cover
     """
     calculate the slk for a given chromosome
     """
@@ -81,10 +81,10 @@ def slk_chrom(chromlist, lag_max, acfs, z=True):
         arr[i] = (xbed["start"], xbed["end"], xbed["p"], r["p"])
     return xbed['chrom'], arr
 
-def _slk_chrom(args):
+def _slk_chrom(args): # pragma: no cover
     return slk_chrom(*args)
 
-def adjust_pvals(fnames, col_num0, acfs, z=True):
+def adjust_pvals(fnames, col_num0, acfs, z=True): # pragma: no cover
     lag_max = acfs[-1][0][1]
 
     # parallelize if multiprocesing is installed.
@@ -101,7 +101,7 @@ def adjust_pvals(fnames, col_num0, acfs, z=True):
         yield chrom, results
 
 
-def run(args):
+def run(args): # pragma: no cover
     acf_vals = read_acf(args.acf)
     col_num = get_col_num(args.c)
     for chrom, results in adjust_pvals(args.files, col_num, acf_vals):
@@ -109,7 +109,7 @@ def run(args):
         for row in results:
             sys.stdout.write(fmt % tuple(row))
 
-def main():
+def main(): # pragma: no cover
     p = argparse.ArgumentParser(description=__doc__,
                    formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--acf", dest="acf", help="acf file containing the lagged "
@@ -124,7 +124,7 @@ def main():
         sys.exit(not p.print_help())
     return run(args)
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     import doctest
     if doctest.testmod(optionflags=doctest.ELLIPSIS |\
                                    doctest.NORMALIZE_WHITESPACE).failed == 0:
