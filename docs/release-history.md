@@ -1,7 +1,16 @@
 # Release History
 
+## v1.1.0
+- We found that `diff_meth_pos` results were not accurate in prior versions and have fixed the regression optimization.
+- `diff_meth_pos` function kwargs changed to provide more flexibility in how the model is optimized.
+   - Added support for COVARIATES in logistic regression. Provide a dataframe with both the phenotype and covariates, and specify which columns are phenotype or covariates. It will rearrange and normalize to ensure the model works best.
+   - Use the new 'solver' kwarg in `diff_meth_pos` to specify which form of linear or logistic regression to run. There are two flavors of each, and both give nearly identical results.
+   - Auto-detects logistic or linear based on input: if non-numeric inputs in phenotype of exactly two values, it assumes logistic.
+- Upgraded manhattan and volcano plots with many more options. Default settings should mirror most R EWAS packages now, with a "suggestive" and "significant" threshold line on manhattan plots.
+- Unit test coverage added.
+
 ## v1.0.1
-- Differentially methylated regions (DMR) will no annotate via cached UCSC database (via fetch_genes) without using the internet, if user wants. (previously, it would still contact the internet database even if user told it not to)
+- Fixed option to use Differentially methylated regions (DMR) via cached local copy of UCSC database (via fetch_genes) without using the internet. Previously, it would still contact the internet database even if user told it not to.
 - Added testing via github actions, and increased speed
 - updated documentation
 
