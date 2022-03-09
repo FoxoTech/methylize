@@ -12,7 +12,7 @@ import methylize
 
 meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
 
-class TestInit():
+class TestInit(unittest.TestCase):
 
     @patch("matplotlib.pyplot.show")
     def test_all_manifests_load_with_genomic_info(self, mock):
