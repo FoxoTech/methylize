@@ -1837,15 +1837,15 @@ def test3(what='disease status', debug=False):
 
     #m.volcano_plot(result, adjust=False, cutoff=(-0.2, 0.2))
 
-def test_wrong_manifest():
+def test():
     import methylize as m
     import pandas as pd
     from pathlib import Path
     df = pd.read_pickle(Path('data/GSE69852_beta_values.pkl'))
     meta = pd.read_pickle(Path('data/GSE69852_GPL13534_meta_data.pkl'))
     res = m.diff_meth_pos(df.sample(50000), meta['converted_age'])
+    m.manhattan_plot(res, '450k')
+    bed = m.diff_meth_regions(res, '450k', prefix='data', plot=True)
 
-    m.manhattan_plot(res, 'epic+')
-    bed = m.diff_meth_regions(res, '450k', prefix='data')
 
 """

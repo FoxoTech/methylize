@@ -233,7 +233,7 @@ Returns:
 
     if kw.get('plot') == True:
         try:
-            manhattan_cols = {'region-p':'PValue', '#chrom':'chromosome', 'start': 'MAPINFO'}
+            manhattan_cols = {'region-p':'PValue', 'region-q':'FDR_QValue', '#chrom':'chromosome', 'start': 'MAPINFO'}
             _fdr_ = pd.read_csv(kw['prefix'] + '.fdr.bed.gz', sep='\t').rename(columns=manhattan_cols).set_index('name')
             manhattan_plot(_fdr_, manifest)
         except Exception as e:
