@@ -47,6 +47,7 @@ Input Parameters:
         Binary phenotypes can be presented as a list/array
         of zeroes and ones or as a list/array of strings made up
         of two unique words (i.e. "control" and "cancer").
+
         - linear regression requires a measurement for the phenotype
         - note: methylprep creates a `sample_sheet_meta_data.pkl` file containing the phenotype
         data for this input. You just need to load it and specify which `column` to be used as the pheno_data.
@@ -67,12 +68,14 @@ Input Parameters:
         - Default: auto-determine, using the data types found in `pheno_data`.
         If it is numeric with more than 2 different labels, use "linear."
     impute:
-        Default: 'delete' probes if ANY samples have missing data for that probe.
-        True or 'auto': if <30 samples, deletes rows; if >=30 samples, uses average.
-        False: don't impute and throw an error if NaNs present
-        'average' - use the average of probe values in this batch
-        'delete' - drop probes if NaNs are present in any sample
-        'fast' - use adjacent sample probe value instead of average (much faster but less precise)
+        Because methylprep output contains missing values by default, this function requires user to either delete or impute missing values.
+
+        - Default: 'delete' probes if ANY samples have missing data for that probe.
+        - True or 'auto': if <30 samples, deletes rows; if >=30 samples, uses average.
+        - False: don't impute and throw an error if NaNs present
+        - 'average' - use the average of probe values in this batch
+        - 'delete' - drop probes if NaNs are present in any sample
+        - 'fast' - use adjacent sample probe value instead of average (much faster but less precise)
     alpha: float
         Default is 0.05 for all tests where it applies.
     fwer: float
@@ -88,7 +91,7 @@ Input Parameters:
         - if True or 'csv', saves a csv file with data
         - if 'pkl', saves a pickle file of the results as a dataframe.
         - Use q_cutoff to limit what gets saved to only significant results.
-            by default, `q_cutoff == 1` and this means everything is saved/reported/exported.
+        By default, `q_cutoff == 1` and this means everything is saved/reported/exported.
     filename:
         - specify a filename for the exported file.
         By default, if not specified, filename will be `DMP_<number of probes in file>_<number of samples processed>_<current_date>.<pkl|csv>`
@@ -103,6 +106,7 @@ Input Parameters:
     solver:
         You can force it to use a different implementation of regression, for debugging.
         Options include:
+
         - 'statsmodels_OLS'
         - 'linregress' # from scipy
         - [logit_DMP() is the default, based on statsmodels.api.Logit()]
@@ -125,15 +129,6 @@ Returns:
 
 
 .. note::
-    Imputation: because methylprep output contains missing values by default, this function requires user to either delete or impute missing values.
-    - This can be disabled, and it will throw a warning if NaNs present.
-    - default is to drop probes with NaNs.
-    - auto:
-      - If there are less than 30 samples, it will delete the missing rows.
-      - If there are >= 30 samples in the batch analyzed, it will replace NaNs with the
-        average value for that probe across all samples.
-    - User may specify: True, 'auto', False, 'delete', 'average'
-
     If you get a `RuntimeError: main thread is not in main loop` error running
       `diff_meth_pos`, add `debug=True` to your function inputs. This error occurs
       in some command line environments when running this function repeatedly, and
