@@ -96,7 +96,7 @@ Display/output Paramters:
 
     verbose: bool -- default False
         Display additional processing information on screen.
-    plot: bool -- default True
+    plot: bool -- default False
         False will suppress the manhattan plot step.
     prefix: str
         prefix that gets appended to all output files (e.g. 'dmr' becomes 'dmr_regions.csv')
@@ -233,7 +233,7 @@ Returns:
 
     if kw.get('plot') == True:
         try:
-            manhattan_cols = {'region-p':'PValue', '#chrom':'chromosome', 'start': 'MAPINFO'}
+            manhattan_cols = {'region-p':'PValue', 'region-q':'FDR_QValue', '#chrom':'chromosome', 'start': 'MAPINFO'}
             _fdr_ = pd.read_csv(kw['prefix'] + '.fdr.bed.gz', sep='\t').rename(columns=manhattan_cols).set_index('name')
             manhattan_plot(_fdr_, manifest)
         except Exception as e:

@@ -53,7 +53,7 @@ except NameError:
 import numpy as np
 from ._common import bediter, get_col_num, genomic_control
 
-def chr_cmp(a, b):
+def chr_cmp(a, b):  # pragma: no cover
     a, b = a[0], b[0]
     a = a.lower().replace("_", ""); b = b.lower().replace("_", "")
     achr = a[3:] if a.startswith("chr") else a
@@ -67,14 +67,14 @@ def chr_cmp(a, b):
         # X Y
         return cmp(achr, bchr)
 
-def chr_norm(a):
+def chr_norm(a):  # pragma: no cover
     a = a[0]
     a = a.lower().replace("_", "");
     achr = a[3:] if a.startswith("chr") else a
     return achr
 
 def manhattan(fname, col_num, image_path, no_log, colors, title, lines, ymax,
-             bonferonni=False, regions=None, subplots=False):
+             bonferonni=False, regions=None, subplots=False): # pragma: no cover
     """
     regions is keyed by chromosome with [(start, stop), ...] extents of
     the regions to highlight
@@ -192,12 +192,13 @@ def manhattan(fname, col_num, image_path, no_log, colors, title, lines, ymax,
 
     return image_path
 
-def hist(pys, ax_hist):
+def hist(pys, ax_hist):  # pragma: no cover
     ax_hist.hist(pys, bins=40, color='#959899', ec='#484B4C')
     ax_hist.set_xticks([])
     ax_hist.set_yticks([])
 
-def qqplot(lpys, ax_qq):
+def qqplot(lpys, ax_qq):  # pragma: no cover
+    """ lpys: list of p-values; ax_qq -- the axis object """
     lunif = -np.log10(np.arange(1, len(lpys) + 1) / float(len(lpys)))[::-1]
     ax_qq.plot(lunif, np.sort(lpys), marker=',', linestyle='none', c='#EA352B')
     ax_qq.set_xticks([])
@@ -208,7 +209,7 @@ def qqplot(lpys, ax_qq):
     ax_qq.axis('tight')
     ax_qq.axes.set_frame_on(True)
 
-def read_regions(fregions):
+def read_regions(fregions):  # pragma: no cover
     if not fregions: return None
     regions = {}
     for toks in (l.split("\t") for l in ts.nopen(fregions) if l[0] != "#"):
@@ -216,7 +217,7 @@ def read_regions(fregions):
         regions[toks[0]].append((int(toks[1]), int(toks[2])))
     return regions
 
-def main():
+def main():  # pragma: no cover
     p = argparse.ArgumentParser(__doc__)
     p.add_argument("--no-log", help="the p-value is already -log10'd, don't "
                 "re -log10", action='store_true', default=False)

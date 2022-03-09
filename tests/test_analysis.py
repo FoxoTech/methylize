@@ -12,7 +12,7 @@ import methylize
 
 meth_data = pd.read_pickle('data/GSE69852_beta_values.pkl').transpose()
 
-class TestInit():
+class TestInit(unittest.TestCase):
 
     @patch("matplotlib.pyplot.show")
     def test_all_manifests_load_with_genomic_info(self, mock):
@@ -48,52 +48,69 @@ class TestInit():
         print(f"{this_array_type} OLD_CHR include_sex")
         print(df.value_counts())
 
-
-    def test_is_interactive(self):
-        from methylize.diff_meth_pos import is_interactive
-        if is_interactive() == False:
-            pass
-        else:
-            raise ValueError()
-
     @patch("matplotlib.pyplot.show")
     def test_diff_meth_pos_logistic(self, mock):
         pheno_data = ["fetal","fetal","fetal","adult","adult","adult"]
         test_results = methylize.diff_meth_pos(
-            meth_data.sample(1000, axis=1),
+            meth_data.sample(100, axis=1),
             pheno_data,
             regression_method="logistic",
             export=False,
-            max_workers=2)
+            max_workers=2,
+            debug=True)
         return test_results
 
     @patch("matplotlib.pyplot.show")
     def test_diff_meth_pos_linear(self, mock):
         pheno_data = ["0","0","0","52","54","57"]
         test_results = methylize.diff_meth_pos(
-            meth_data.sample(1000, axis=1),
+            meth_data.sample(200, axis=1),
             pheno_data,
             regression_method="linear",
             export=False,
-            max_workers=2)
+            max_workers=2,
+            debug=True)
         return test_results
+
+    @patch("matplotlib.pyplot.show")
+    def test_diff_meth_pos_linear_legacy(self, mock):
+        pheno_data = ["0","0","0","22","34","57"]
+        test_results = methylize.diff_meth_pos(
+            meth_data.sample(200, axis=1),
+            pheno_data,
+            regression_method="linear",
+            export=False,
+            max_workers=2,
+            solver='statsmodels_OLS')
+        return test_results
+
+
 
     @patch("matplotlib.pyplot.show")
     def test_manhattan(self, mock):
         test_results= self.test_diff_meth_pos_logistic()
         methylize.manhattan_plot(test_results, '450k') #, cutoff=0.01, palette='Gray3', save=False)
+        with self.assertRaises(ValueError):
+            methylize.manhattan_plot(test_results, 'epic+') # wrong array type
 
     @patch("matplotlib.pyplot.show")
     def test_volcano(self, mock):
         test_results= self.test_diff_meth_pos_linear()
-        methylize.volcano_plot(test_results, fontsize=10, cutoff=0.15, beta_coefficient_cutoff=(-0.05,0.05), save=False)
+        methylize.volcano_plot(test_results, fontsize=10, bcutoff=(-0.05,0.05), save=False)
+
+    @patch("matplotlib.pyplot.show")
+    def test_volcano_moreoptions(self, mock):
+        test_results= self.test_diff_meth_pos_linear()
+        methylize.volcano_plot(test_results, fontsize=10, alpha=0.1, fwer=0.05,
+            cutoff=(-0.05,0.05), save=False, adjust=True, palette='Pastel1', width=8, height=4, dotsize=20,
+            data_type_label='Regression Coefficient', plot_cutoff_label=True)
 
     @patch("matplotlib.pyplot.show")
     def test_diff_meth_pos_mouse_linear(self, mock):
         """mouse contains NaNs and multiple probes of the same IlmnID"""
         ms = pd.read_pickle('data/mouse_beta_values.pkl')
         pheno_data = [3,5,7,9,11,13]
-        test_results = methylize.diff_meth_pos(ms.transpose().sample(10000,axis=1), pheno_data, regression_method='linear', impute=True)
+        test_results = methylize.diff_meth_pos(ms.transpose().sample(200,axis=1), pheno_data, regression_method='linear', impute=True)
         if len(test_results) == 0: # happens with logistic method + mouse
             raise AssertionError("no test_results for diff_meth_pos() on mouse")
         methylize.manhattan_plot(test_results, 'mouse', save=False)

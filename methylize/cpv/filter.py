@@ -22,7 +22,7 @@ import toolshed as ts
 def ilogit(v):
     return 1 / (1 + exp(-v))
 
-def fix_bed(fname):
+def fix_bed(fname): # pragma: no cover
     """
     a lot of bed files will have no header or have e.g.
     8e6 instead of 8000000 for start/end. this just fixes that
@@ -42,7 +42,7 @@ def fix_bed(fname):
     return tname
 
 
-def main():
+def main(): # pragma: no cover
     p = argparse.ArgumentParser(description=__doc__,
                    formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("-p", dest="p", help="p-value column from `p_bed`",
@@ -66,7 +66,7 @@ def main():
         print("\t".join(row))
 
 def filter(p_bed, region_bed, max_p=None, region_p=None, p_col_name="P.Value",
-                    coef_col_name="logFC"):
+                    coef_col_name="logFC"): # pragma: no cover
 
     ph = ts.header(p_bed)
     if (ph[1] + ph[2]).isdigit():
@@ -151,7 +151,7 @@ def filter(p_bed, region_bed, max_p=None, region_p=None, p_col_name="P.Value",
             j = 1
         yield frow
 
-if __name__ == "__main__":
+if __name__ == "__main__": # pragma: no cover
     import doctest
     if doctest.testmod(optionflags=doctest.ELLIPSIS |\
                                    doctest.NORMALIZE_WHITESPACE).failed == 0:

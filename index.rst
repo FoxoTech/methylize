@@ -13,6 +13,7 @@ Getting Started
 
    docs/diff_meth_regions.md
    docs/methylize_tutorial.ipynb
+   docs/example-GSE69852-DMP-DMR.ipynb
    docs/source/modules
    methylprep package <https://life-epigenetics-methylprep.readthedocs-hosted.com/en/latest/>
    methylcheck package <https://life-epigenetics-methylcheck.readthedocs-hosted.com/en/latest/>
