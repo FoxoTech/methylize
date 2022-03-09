@@ -88,10 +88,11 @@ Can be provided as
     - a list of strings,
     - integer binary data,
     - numeric continuous data
-    - pandas series or numpy array
+    - pandas Series, DataFrame or numpy array
 
-Only 2 phenotypes are allowed with logistic regression. Linear regression can take more than two phenotypes.
-The function will coerge string labels for phenotype into 0s and 1s when running logistic regression. To use the meta data associated with a dataset, you would need to pass in the column of your meta dataframe as a list or series. The order of the items in the phenotype should match the order of samples in the beta values or M-values.
+Only 2 phenotypes are allowed with logistic regression. Use Linear regression with numeric (measurement) phenotypes like age or time. You can pass in the GEO meta DataFrame associated with a dataset along with `column=<columnname>` kwarg. The order of the items in the phenotype should match the order of samples in the beta values or M-values.
+
+Covariates are also supported for logistic (but not linear) regression. Pass in `covariates=True` to treat all other columns in a phenotype DataFrame as covariates, or pass in a list of column names to specify specific parts of the DataFrame. Note that supplying too many covariates for small sample sizes will lead to most probes failing with Linear Algebra or Perfect Separation errors.
 
 For details on all of the other adjustable input parameters, refer to the API for [diff_meth_pos()](docs/source/modules.html#module-methylize.diff_meth_pos)
 
@@ -99,29 +100,28 @@ For details on all of the other adjustable input parameters, refer to the API fo
 A pandas dataframe of regression `statistics` with one row for each probe
 and these columns:
 
-    - regression coefficient
-    - lower limit of the coefficient's 95% confidence interval
-    - upper limit of the coefficient's 95% confidence interval
-    - standard error
-    - p-value (phenotype group A vs B - likelihood that the difference is significant for this probe/location)
-    - q-value (p-values corrected for multiple testing using the Benjamini-Hochberg FDR method)
-    - FDR_QValue: p value, adjusted for multiple comparisons
+    - `Coefficient`: regression coefficient
+    - `StandardError`: standard error    
+    - `95%CI_lower`: lower limit of the coefficient's 95% confidence interval
+    - `95%CI_upper`: upper limit of the coefficient's 95% confidence interval
+    - `PValue`: p-value: phenotype group A vs B - likelihood that the difference is significant for this probe/location
+    - `Rsquared`: proportion (0 to 1) of probe variance explained by your phenotype. Linear Regression Only.
+    - `FDR_QValue`: p-values corrected for multiple comparisons using the Benjamini-Hochberg FDR method. The False Discovery Rate (FDR) corrected p-values will remain comparable, regardless of the number of additional comparisons (probes) you include.
 
-    The rows are sorted by q-value in ascending order to list the most significant
-    probes first. If q_cutoff is specified, only probes with significant q-values
-    less than the cutoff will be returned in the dataframe.
+    If a `q_cutoff` is specified, only probes with significant q-values less than the cutoff will be returned in the DataFrame.
 
-## Differentially methylated regions
-Pass in your DMP stats dataframe, and it calculates and annotates differentially methylated regions (DMR) using the `combined-pvalues` pipeline and returns list of output files.
+## Differentially methylated regions (DMR)
+Pass in your `diff_meth_pos` (DMP) stats results DataFrame as input, and it will calculate and annotate differentially methylated regions (DMR) using the `combined-pvalues` pipeline. This function returns list of output files.
 
     - calculates auto-correlation
-    - combines adjacent P-values
-    - performs false discovery adjustment
-    - finds regions of enrichment (i.e. series of adjacent low P-values)
+    - combines adjacent p-values
+    - performs false discovery rate (FDR) adjustment
+    - finds regions of enrichment (i.e. series of adjacent low p-values)
     - assigns significance to those regions
-    - annotates significant regions with possibly relevant nearby Genes, using the UCSC Genome Browser Database
-    - annotates candidate genes with expression levels for the sample tissue type, if user specifies the
-    sample's tissue type.
+    - annotates significant regions with possibly relevant nearby Genes,
+      using the UCSC Genome Browser Database
+    - annotates candidate genes with expression levels for the sample tissue type,
+      if user specifies the sample tissue type.
     - returns everything in a CSV that can be imported into other Genomic analysis packages.
 
 For more details on customizing the inputs and outputs, see API for the [diff_meth_regions(stats, array_type)](docs/source/modules.html#module-methylize.diff_meth_regions) function.

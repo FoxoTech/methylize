@@ -87,8 +87,8 @@ Input Parameters:
         - default: False
         - if True or 'csv', saves a csv file with data
         - if 'pkl', saves a pickle file of the results as a dataframe.
-        - USE q_cutoff to limit what gets saved to only significant results.
-            by default, q_cutoff == 1 and this means everything is saved/reported/exported.
+        - Use q_cutoff to limit what gets saved to only significant results.
+            by default, `q_cutoff == 1` and this means everything is saved/reported/exported.
     filename:
         - specify a filename for the exported file.
         By default, if not specified, filename will be `DMP_<number of probes in file>_<number of samples processed>_<current_date>.<pkl|csv>`
@@ -134,17 +134,23 @@ Returns:
         average value for that probe across all samples.
     - User may specify: True, 'auto', False, 'delete', 'average'
 
+    If you get a `RuntimeError: main thread is not in main loop` error running
+      `diff_meth_pos`, add `debug=True` to your function inputs. This error occurs
+      in some command line environments when running this function repeatedly, and
+      the parallel processing steps do not all close. Using debug mode forces it
+      to analyze the probes serially, not parallel. It is a little slower but will
+      always run without error under these conditions.
+
     If Progress Bar Missing:
       if you don't see a progress bar in your jupyterlab notebook, try this:
       - conda install -c conda-forge nodejs
       - jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
-    FUTURE PLANNED FEATURE: shrink_var
-      - If True, variance shrinkage will be employed and squeeze
-      variance using Bayes posterior means. Variance shrinkage
-      is recommended when analyzing small datasets (n < 10).
-      See http://www.uvm.edu/~rsingle/JournalClub/papers/Smyth-SAGMB-2004_eBayes+microarray.pdf
-      [NOT IMPLEMENTED YET]
+.. todo::
+    `shrink_var` feature: variance shrinkage / squeeze variance using Bayes posterior means.
+    Variance shrinkage is recommended when analyzing small datasets (n < 10).
+    Paper ref: http://www.uvm.edu/~rsingle/JournalClub/papers/Smyth-SAGMB-2004_eBayes+microarray.pdf
+    [NOT IMPLEMENTED YET]
     """
     import warnings
     np.seterr(divide='ignore', over='ignore') # log10(0.0) happens
