@@ -58,18 +58,18 @@ If progress bar is missing:
     - conda install -c conda-forge nodejs
     - jupyter labextension install @jupyter-widgets/jupyterlab-manager
 
-##Methylize Package
+## Methylize Package
 
 The `methylize` package contains both high-level APIs for processing data from local files and low-level functionality allowing you to analyze your data AFTER running `methylprep` and `methylcheck`. For greatest usability, import `methylize` into a Jupyer Notebook along with your processed sample data (a DataFrame of beta values or m-values and a separate DataFrame containing meta data about the samples).
 
 `Methylize` allows you to run linear or logistic regression on all probes and identify points of interest in the methylome where DNA is differentially modified. Then you can use these regression results to create *volcano plots* and *manhattan plots*.
 
-###Sample Manhattan Plot
+### Sample Manhattan Plot
 ![Manhattan Plot](https://github.com/FoxoTech/methylize/blob/master/docs/manhattan_example.png?raw=true)
 
 ![Manhattan Plot (alternate coloring)](https://github.com/FoxoTech/methylize/blob/master/docs/manhattan_example2.png?raw=true)
 
-###Sample Volcano Plot
+### Sample Volcano Plot
 ![Volcano Plot](https://github.com/FoxoTech/methylize/blob/master/docs/volcano_example.png?raw=true)
 
 Customizable: Plot size, color palette, and cutoff p-value lines can be set by the user.
