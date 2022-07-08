@@ -17,3 +17,4 @@ pymysql
 toolshed
 interlap
 adjustText
+joblib

@@ -37,6 +37,7 @@ pymysql = "*"
 toolshed = "*"
 interlap = "*"
 pytest-cov = "*"
+joblib = "*"
 
 [requires]
 python_version = "3.8"
