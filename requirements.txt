@@ -18,3 +18,4 @@ toolshed
 interlap
 adjustText
 joblib
+seaborn

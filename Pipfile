@@ -38,6 +38,7 @@ toolshed = "*"
 interlap = "*"
 pytest-cov = "*"
 joblib = "*"
+seaborn = "*"
 
 [requires]
 python_version = "3.8"
