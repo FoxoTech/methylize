@@ -9,7 +9,6 @@ import matplotlib # color maps and changing Agg backend after cpv alters it.
 default_backend = matplotlib.get_backend()
 import matplotlib.pyplot as plt
 import methylprep
-import methylcheck
 import numpy as np
 # from cpv.pipeline import pipeline -- copied and modified here
 #from methylize.cpv._common import bediter, genomic_control

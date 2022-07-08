@@ -1,5 +1,4 @@
 methylprep
-methylcheck
 pandas
 numpy #>=1.18.5
 scipy #>=1.2.3

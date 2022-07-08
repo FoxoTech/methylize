@@ -9,7 +9,6 @@ requirements = [
     'statsmodels',
     'matplotlib',
     'methylprep',
-    'methylcheck',
     'pymysql',
     'toolshed',
     'interlap',

@@ -1,5 +1,9 @@
 # Release History
 
+## v1.1.1
+- Minor edits to readme and removing methylcheck import, because it is not used anywhere.
+- Note: methylprep is only imported for reading Manifest files and handling ArrayType.
+
 ## v1.1.0
 - We found that `diff_meth_pos` results were not accurate in prior versions and have fixed the regression optimization.
 - `diff_meth_pos` function kwargs changed to provide more flexibility in how the model is optimized.
