@@ -629,7 +629,7 @@ def logit_DMP(probe_data, phenotypes, covariate_data=None, debug=False):
         """ calculates a 95% confidence interval (x  +/-  t * (s/√n))
         where data is a series of sample values for one probe."""
         (CI_lower, CI_upper) = student_t.interval(
-            alpha=0.95, # e.g. 95%
+            confidence=0.95, # e.g. 95%
             df=len(data)-1, # degrees of freedom, n-1
             loc=np.mean(data), # sample mean
             scale= sem(data)) # standard error (stdev / sqrt-of-N)
